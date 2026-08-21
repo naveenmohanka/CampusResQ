@@ -1,4 +1,4 @@
-import {
+﻿import {
   collection,
   doc,
   getDoc,
@@ -35,6 +35,7 @@ export function subscribeToIncidents(
         (snapshot) => {
           const items: Incident[] = snapshot.docs.map((docSnap) => {
             const data = docSnap.data();
+            const isAnon = Boolean(data.isAnonymous);
             return {
               id: docSnap.id,
               title: data.title || 'Untitled Incident',
@@ -46,19 +47,26 @@ export function subscribeToIncidents(
                 latitude: 20.3533,
                 longitude: 85.8189,
                 address: 'Main Campus',
+                building: 'Main Campus Building',
               },
               reporterId: data.reporterId || '',
-              reporterName: data.reporterName || 'Anonymous Student',
-              reporterEmail: data.reporterEmail || '',
-              reporterPhone: data.reporterPhone,
+              reporterName: isAnon ? 'Anonymous Reporter' : (data.reporterName || 'Student Reporter'),
+              reporterEmail: isAnon ? undefined : data.reporterEmail,
+              reporterPhone: isAnon ? undefined : data.reporterPhone,
+              isAnonymous: isAnon,
               assignedTo: data.assignedTo || null,
               assignedToName: data.assignedToName || null,
               assignedToEmail: data.assignedToEmail || null,
+              assignedToPhone: data.assignedToPhone || null,
               resolutionNotes: data.resolutionNotes,
-              resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
               images: data.images || [],
+              evidence: data.evidence || [],
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
+              assignedAt: data.assignedAt?.toDate ? data.assignedAt.toDate().toISOString() : data.assignedAt,
+              acknowledgedAt: data.acknowledgedAt?.toDate ? data.acknowledgedAt.toDate().toISOString() : data.acknowledgedAt,
+              inProgressAt: data.inProgressAt?.toDate ? data.inProgressAt.toDate().toISOString() : data.inProgressAt,
+              resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
+              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
             };
           });
 
@@ -96,6 +104,7 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const data = snap.data();
+        const isAnon = Boolean(data.isAnonymous);
         return {
           id: snap.id,
           title: data.title || 'Untitled Incident',
@@ -107,19 +116,26 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
             latitude: 20.3533,
             longitude: 85.8189,
             address: 'Main Campus',
+            building: 'Main Campus Building',
           },
           reporterId: data.reporterId || '',
-          reporterName: data.reporterName || 'Anonymous Student',
-          reporterEmail: data.reporterEmail || '',
-          reporterPhone: data.reporterPhone,
+          reporterName: isAnon ? 'Anonymous Reporter' : (data.reporterName || 'Student Reporter'),
+          reporterEmail: isAnon ? undefined : data.reporterEmail,
+          reporterPhone: isAnon ? undefined : data.reporterPhone,
+          isAnonymous: isAnon,
           assignedTo: data.assignedTo || null,
           assignedToName: data.assignedToName || null,
           assignedToEmail: data.assignedToEmail || null,
+          assignedToPhone: data.assignedToPhone || null,
           resolutionNotes: data.resolutionNotes,
-          resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
           images: data.images || [],
+          evidence: data.evidence || [],
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
+          assignedAt: data.assignedAt?.toDate ? data.assignedAt.toDate().toISOString() : data.assignedAt,
+          acknowledgedAt: data.acknowledgedAt?.toDate ? data.acknowledgedAt.toDate().toISOString() : data.acknowledgedAt,
+          inProgressAt: data.inProgressAt?.toDate ? data.inProgressAt.toDate().toISOString() : data.inProgressAt,
+          resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
         };
       }
     } catch (err) {
@@ -146,6 +162,9 @@ export async function updateIncidentStatus(
       status: newStatus,
       updatedAt: serverTimestamp(),
     };
+    if (newStatus === 'in_progress') {
+      updateData.inProgressAt = serverTimestamp();
+    }
     if (newStatus === 'resolved') {
       updateData.resolvedAt = serverTimestamp();
       if (resolutionNotes) updateData.resolutionNotes = resolutionNotes;
@@ -158,6 +177,7 @@ export async function updateIncidentStatus(
           ...inc,
           status: newStatus,
           resolutionNotes: resolutionNotes || inc.resolutionNotes,
+          inProgressAt: newStatus === 'in_progress' ? nowISO : inc.inProgressAt,
           resolvedAt: newStatus === 'resolved' ? nowISO : inc.resolvedAt,
           updatedAt: nowISO,
         };
@@ -197,6 +217,7 @@ export async function assignMentorToIncident(
       assignedToName: mentorName,
       assignedToEmail: mentorEmail,
       status: 'assigned',
+      assignedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   } else {
@@ -208,6 +229,7 @@ export async function assignMentorToIncident(
           assignedToName: mentorName,
           assignedToEmail: mentorEmail,
           status: inc.status === 'reported' ? 'assigned' : inc.status,
+          assignedAt: inc.assignedAt || nowISO,
           updatedAt: nowISO,
         };
       }
@@ -222,7 +244,7 @@ export async function assignMentorToIncident(
     performedBy,
     performedByName,
     performedByRole: 'admin',
-    details: `Assigned incident to mentor ${mentorName} (${mentorEmail})`,
+    details: `Assigned incident to responder ${mentorName} (${mentorEmail})`,
     timestamp: nowISO,
   });
 }
@@ -261,7 +283,7 @@ export async function updateIncidentSeverity(
     performedBy,
     performedByName,
     performedByRole: 'admin',
-    details: `Severity escalated/updated to "${newSeverity.toUpperCase()}"`,
+    details: `Severity escalated to "${newSeverity.toUpperCase()}"`,
     timestamp: nowISO,
   });
 }
@@ -283,14 +305,18 @@ function applyFilters(incidents: Incident[], filters?: IncidentFilters): Inciden
       if (filters.assignedTo === 'unassigned' && inc.assignedTo) return false;
       if (filters.assignedTo !== 'unassigned' && inc.assignedTo !== filters.assignedTo) return false;
     }
+    if (filters.isAnonymous !== undefined) {
+      if (Boolean(inc.isAnonymous) !== filters.isAnonymous) return false;
+    }
     if (filters.searchQuery) {
       const q = filters.searchQuery.toLowerCase();
       const matchTitle = inc.title.toLowerCase().includes(q);
       const matchDesc = inc.description.toLowerCase().includes(q);
       const matchLoc = inc.location.address.toLowerCase().includes(q);
-      const matchReporter = inc.reporterName.toLowerCase().includes(q);
+      const matchBldg = (inc.location.building || '').toLowerCase().includes(q);
+      const matchReporter = (inc.reporterName || '').toLowerCase().includes(q);
       const matchId = inc.id.toLowerCase().includes(q);
-      if (!matchTitle && !matchDesc && !matchLoc && !matchReporter && !matchId) {
+      if (!matchTitle && !matchDesc && !matchLoc && !matchBldg && !matchReporter && !matchId) {
         return false;
       }
     }

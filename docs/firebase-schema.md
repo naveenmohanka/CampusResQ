@@ -1,26 +1,6 @@
 # Firebase & Cloud Firestore Schema Documentation
 
-CampusResQ utilizes Google Cloud Firestore as the single unified real-time backend shared between the **Android Mobile App** (Student & Mentor client) and the **Admin Web Dashboard** (Security Operations Command Center).
-
----
-
-## Architecture Overview
-
-```
-                      FIREBASE PROJECT
-                    (campusresq-29f13)
-                            │
-              ┌─────────────┴─────────────┐
-              │                           │
-      Android App (Client)        Web Admin Dashboard
-    (google-services.json)          (VITE_FIREBASE_*)
-              │                           │
-              └─────────────┬─────────────┘
-                            │
-               Shared Cloud Firestore
-               Shared Firebase Auth
-               Shared Firebase Storage
-```
+CampusResQ utilizes Google Cloud Firestore and Firebase Storage as the single unified real-time backend shared between the **Android Mobile App** (Student & Mentor client) and the **Admin Web Dashboard** (Security Operations Command Center).
 
 ---
 
@@ -29,23 +9,21 @@ CampusResQ utilizes Google Cloud Firestore as the single unified real-time backe
 ### 1. `users` Collection
 Stores registered student, mentor, and administrator profile data.
 
-**Document Path**: `users/{userId}` (where `{userId}` corresponds to the Firebase Auth UID)
+**Document Path**: `users/{userId}` (where `{userId}` is the Firebase Auth UID)
 
 | Field Name | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `name` | string | Yes | Full name of the user |
 | `email` | string | Yes | University email address |
 | `role` | string | Yes | One of: `'student'`, `'mentor'`, `'admin'` |
-| `department` | string | No | Academic branch or administrative unit (e.g. `'School of Computer Engineering'`) |
+| `department` | string | No | Academic branch or administrative unit |
 | `phoneNumber` | string | No | Mobile contact number for emergency dispatch |
-| `avatarUrl` | string | No | URL to profile photo |
 | `status` | string | No | `'active'`, `'inactive'`, `'suspended'` |
 | `createdAt` | timestamp | Yes | Account creation timestamp |
-| `updatedAt` | timestamp | No | Last update timestamp |
 
 ---
 
-### 2. `incidents` Collection
+### 2. `incidents` Collection (Module 1 & 4)
 Stores all reported emergency dispatches, student SOS requests, hazard alerts, and security reports.
 
 **Document Path**: `incidents/{incidentId}`
@@ -61,35 +39,59 @@ Stores all reported emergency dispatches, student SOS requests, hazard alerts, a
 | `location.latitude` | number | Yes | GPS Latitude |
 | `location.longitude` | number | Yes | GPS Longitude |
 | `location.address` | string | Yes | Landmark / Address string |
-| `location.building` | string | No | Campus building name |
+| `location.building` | string | No | Campus building name (used for hotspot intelligence) |
 | `location.floor` | string | No | Specific floor or room |
 | `reporterId` | string | Yes | Firebase Auth UID of reporting student |
-| `reporterName` | string | Yes | Full name of reporter |
-| `reporterEmail` | string | Yes | Email of reporter |
-| `reporterPhone` | string | No | Phone number of reporter |
+| `reporterName` | string | Yes | Full name of reporter (or `'Anonymous Reporter'` if confidential) |
+| `reporterEmail` | string | No | Email of reporter (omitted if `isAnonymous: true`) |
+| `reporterPhone` | string | No | Phone of reporter (omitted if `isAnonymous: true`) |
+| `isAnonymous` | boolean | No | Flag indicating confidential whistleblower report |
 | `assignedTo` | string / null | No | UID of assigned faculty mentor / security lead |
 | `assignedToName` | string / null | No | Full name of assigned mentor |
 | `assignedToEmail` | string / null | No | Email of assigned mentor |
-| `resolutionNotes` | string | No | Summary of actions taken upon resolving the incident |
-| `resolvedAt` | timestamp | No | Timestamp when marked resolved |
-| `createdAt` | timestamp | Yes | Timestamp when incident was first logged |
-| `updatedAt` | timestamp | Yes | Timestamp of most recent update |
+| `assignedToPhone` | string / null | No | Phone of assigned mentor |
 | `images` | array<string> | No | Array of Firebase Storage image URLs |
+| `resolutionNotes` | string | No | Summary of actions taken upon resolving the incident |
+| `createdAt` | timestamp | Yes | Incident creation timestamp |
+| `assignedAt` | timestamp | No | Timestamp when first responder was assigned (powers SLA response time) |
+| `inProgressAt` | timestamp | No | Timestamp when responder arrived on-scene |
+| `resolvedAt` | timestamp | No | Timestamp when marked resolved |
+| `updatedAt` | timestamp | Yes | Timestamp of most recent update |
 
 ---
 
-### 3. `activityLogs` Collection
+### 3. `alerts` Collection (Module 2: Campus Safety Alert Network)
+Stores broadcast advisories, weather warnings, and emergency lockdown orders.
+
+**Document Path**: `alerts/{alertId}`
+
+| Field Name | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `title` | string | Yes | Broadcast headline / title |
+| `message` | string | Yes | Emergency instruction and safety details |
+| `severity` | string | Yes | `'critical'`, `'warning'`, `'advisory'` |
+| `category` | string | Yes | `'emergency'`, `'fire'`, `'weather'`, `'security'`, `'health'`, `'facility'`, `'general'` |
+| `targetArea` | string | Yes | Target campus zone (e.g. `'All Campus'`, `'Hostel Complex'`, `'Science Block'`) |
+| `active` | boolean | Yes | Whether the alert is currently active and broadcasting |
+| `createdBy` | string | Yes | Administrator UID |
+| `createdByName` | string | Yes | Administrator name |
+| `createdAt` | timestamp | Yes | Publication timestamp |
+| `expiresAt` | timestamp | No | Expiration timestamp |
+| `acknowledgedCount` | number | No | Number of mobile clients that confirmed receipt |
+
+---
+
+### 4. `activityLogs` Collection (Immutable Audit Trail)
 Immutable audit log tracking all actions performed across the platform.
 
 **Document Path**: `activityLogs/{logId}`
 
 | Field Name | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `incidentId` | string / null | No | Associated incident ID (if related to an incident) |
-| `action` | string | Yes | `'INCIDENT_CREATED'`, `'INCIDENT_ASSIGNED'`, `'STATUS_CHANGED'`, `'SEVERITY_UPDATED'`, `'COMMENT_ADDED'`, `'INCIDENT_RESOLVED'`, `'USER_ROLE_CHANGED'`, `'SYSTEM_ALERT'` |
-| `performedBy` | string | Yes | Firebase Auth UID of actor |
+| `incidentId` | string / null | No | Associated incident ID |
+| `action` | string | Yes | `'INCIDENT_CREATED'`, `'INCIDENT_ASSIGNED'`, `'STATUS_CHANGED'`, `'SEVERITY_UPDATED'`, `'INCIDENT_RESOLVED'`, `'USER_ROLE_CHANGED'`, `'SYSTEM_ALERT'` |
+| `performedBy` | string | Yes | Firebase Auth UID of actor (must match `request.auth.uid`) |
 | `performedByName` | string | Yes | Full name of actor |
-| `performedByRole` | string | Yes | Role of actor at execution time (`'admin'`, `'mentor'`, `'student'`, `'system'`) |
+| `performedByRole` | string | Yes | Role of actor at execution time (`'admin'`, `'mentor'`, `'student'`) |
 | `details` | string | Yes | Human-readable explanation of the action taken |
 | `timestamp` | timestamp | Yes | Event timestamp |
-| `metadata` | map | No | Optional structured payload |

@@ -1,6 +1,7 @@
 import { Incident } from '../types/incident';
 import { UserProfile } from '../types/user';
 import { ActivityLog } from '../types/activity';
+import { CampusAlert } from '../types/alert';
 
 export const INITIAL_USERS: UserProfile[] = [
   {
@@ -38,7 +39,7 @@ export const INITIAL_USERS: UserProfile[] = [
     name: 'Capt. Suresh Panda',
     email: 'suresh.panda@campusresq.edu',
     role: 'mentor',
-    department: 'Campus Security Quick Response',
+    department: 'Campus Security Quick Response Team',
     phoneNumber: '+91 98765 33445',
     status: 'active',
     createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
@@ -79,7 +80,7 @@ export const INITIAL_INCIDENTS: Incident[] = [
   {
     id: 'inc-2026-001',
     title: 'Severe Asthma Attack & Respiratory Distress',
-    description: 'Student collapsed outside Central Library 2nd floor study hall experiencing severe breathing difficulty. First aid team requested immediately.',
+    description: 'Student collapsed outside Central Library 2nd floor study hall experiencing acute breathing difficulty. Emergency medical response requested immediately.',
     category: 'medical',
     severity: 'critical',
     status: 'in_progress',
@@ -94,16 +95,31 @@ export const INITIAL_INCIDENTS: Incident[] = [
     reporterName: 'Priya Sharma',
     reporterEmail: 'priya.2105123@campusresq.edu',
     reporterPhone: '+91 98111 22334',
+    isAnonymous: false,
     assignedTo: 'mentor-103',
     assignedToName: 'Capt. Suresh Panda',
     assignedToEmail: 'suresh.panda@campusresq.edu',
-    createdAt: new Date(Date.now() - 25 * 60000).toISOString(),
+    assignedToPhone: '+91 98765 33445',
+    images: ['https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80'],
+    evidence: [
+      {
+        id: 'ev-001',
+        name: 'library_hall_location.jpg',
+        url: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80',
+        size: 1420000,
+        mimeType: 'image/jpeg',
+        uploadedAt: new Date(Date.now() - 25 * 60000).toISOString(),
+      }
+    ],
+    createdAt: new Date(Date.now() - 25 * 60000).toISOString(), // 25 mins ago
+    assignedAt: new Date(Date.now() - 20 * 60000).toISOString(), // 5 min response time
+    inProgressAt: new Date(Date.now() - 10 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 10 * 60000).toISOString(),
   },
   {
     id: 'inc-2026-002',
     title: 'Smoke Detected in Chemistry Lab 3 Exhaust System',
-    description: 'Chemical odor and thick grey smoke emerging from fume hood in Organic Chem Lab 304. Lab evacuated.',
+    description: 'Chemical odor and grey smoke emerging from fume hood in Organic Chem Lab 304. Lab evacuated.',
     category: 'fire',
     severity: 'high',
     status: 'assigned',
@@ -118,10 +134,24 @@ export const INITIAL_INCIDENTS: Incident[] = [
     reporterName: 'Arjun Das',
     reporterEmail: 'arjun.2205456@campusresq.edu',
     reporterPhone: '+91 98222 33445',
+    isAnonymous: false,
     assignedTo: 'mentor-101',
     assignedToName: 'Prof. Ananya Sen',
     assignedToEmail: 'ananya.sen@campusresq.edu',
-    createdAt: new Date(Date.now() - 75 * 60000).toISOString(),
+    assignedToPhone: '+91 98765 11223',
+    images: ['https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=600&q=80'],
+    evidence: [
+      {
+        id: 'ev-002',
+        name: 'chem_lab_vent_smoke.jpg',
+        url: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=600&q=80',
+        size: 2150000,
+        mimeType: 'image/jpeg',
+        uploadedAt: new Date(Date.now() - 75 * 60000).toISOString(),
+      }
+    ],
+    createdAt: new Date(Date.now() - 75 * 60000).toISOString(), // 75 mins ago
+    assignedAt: new Date(Date.now() - 65 * 60000).toISOString(), // 10 min response time
     updatedAt: new Date(Date.now() - 35 * 60000).toISOString(),
   },
   {
@@ -139,9 +169,10 @@ export const INITIAL_INCIDENTS: Incident[] = [
       floor: '4th Floor',
     },
     reporterId: 'student-203',
-    reporterName: 'Rohan Mehra',
-    reporterEmail: 'rohan.2305789@campusresq.edu',
-    reporterPhone: '+91 98333 44556',
+    reporterName: 'Anonymous Reporter',
+    reporterEmail: undefined,
+    reporterPhone: undefined,
+    isAnonymous: true,
     assignedTo: null,
     assignedToName: null,
     createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
@@ -164,10 +195,13 @@ export const INITIAL_INCIDENTS: Incident[] = [
     reporterId: 'student-201',
     reporterName: 'Priya Sharma',
     reporterEmail: 'priya.2105123@campusresq.edu',
+    isAnonymous: false,
     assignedTo: 'mentor-103',
     assignedToName: 'Capt. Suresh Panda',
     assignedToEmail: 'suresh.panda@campusresq.edu',
     createdAt: new Date(Date.now() - 180 * 60000).toISOString(),
+    assignedAt: new Date(Date.now() - 165 * 60000).toISOString(), // 15 min response time
+    inProgressAt: new Date(Date.now() - 60 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 60 * 60000).toISOString(),
   },
   {
@@ -187,12 +221,14 @@ export const INITIAL_INCIDENTS: Incident[] = [
     reporterId: 'mentor-101',
     reporterName: 'Prof. Ananya Sen',
     reporterEmail: 'ananya.sen@campusresq.edu',
+    isAnonymous: false,
     assignedTo: 'mentor-102',
     assignedToName: 'Dr. Vikramaditya Rao',
     assignedToEmail: 'vikram.rao@campusresq.edu',
     resolutionNotes: 'Technician replaced faulty capacitor and rewired contactor relay. Thermal imaging confirmed normal temperature.',
-    resolvedAt: new Date(Date.now() - 40 * 60000).toISOString(),
     createdAt: new Date(Date.now() - 360 * 60000).toISOString(),
+    assignedAt: new Date(Date.now() - 352 * 60000).toISOString(), // 8 min response time
+    resolvedAt: new Date(Date.now() - 40 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 40 * 60000).toISOString(),
   },
   {
@@ -212,12 +248,72 @@ export const INITIAL_INCIDENTS: Incident[] = [
     reporterId: 'student-202',
     reporterName: 'Arjun Das',
     reporterEmail: 'arjun.2205456@campusresq.edu',
+    isAnonymous: false,
     assignedTo: 'mentor-103',
     assignedToName: 'Capt. Suresh Panda',
+    assignedToEmail: 'suresh.panda@campusresq.edu',
     resolutionNotes: 'Transported to Campus Health Center via ambulance. Ligament strain diagnosed, brace fitted, discharged with pain medication.',
-    resolvedAt: new Date(Date.now() - 120 * 60000).toISOString(),
     createdAt: new Date(Date.now() - 480 * 60000).toISOString(),
+    assignedAt: new Date(Date.now() - 468 * 60000).toISOString(), // 12 min response time
+    resolvedAt: new Date(Date.now() - 120 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 120 * 60000).toISOString(),
+  },
+  {
+    id: 'inc-2026-007',
+    title: 'Unlit Pathway & Stalker Sighting near KP-7 Hostel Boundary',
+    description: 'Two students reported a trespasser near the unlit perimeter fence behind KP-7 Boys Hostel.',
+    category: 'security',
+    severity: 'high',
+    status: 'resolved',
+    location: {
+      latitude: 20.3515,
+      longitude: 85.8152,
+      address: 'Perimeter Pathway, Behind KP-7 Hostel',
+      building: 'Hostel KP-7',
+      floor: 'Ground',
+    },
+    reporterId: 'student-203',
+    reporterName: 'Anonymous Reporter',
+    isAnonymous: true,
+    assignedTo: 'mentor-103',
+    assignedToName: 'Capt. Suresh Panda',
+    assignedToEmail: 'suresh.panda@campusresq.edu',
+    resolutionNotes: 'Security patrolling increased in perimeter zone. Temporary floodlight deployed.',
+    createdAt: new Date(Date.now() - 1440 * 60000).toISOString(), // 24h ago
+    assignedAt: new Date(Date.now() - 1431 * 60000).toISOString(), // 9 min response time
+    resolvedAt: new Date(Date.now() - 1200 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 1200 * 60000).toISOString(),
+  }
+];
+
+export const INITIAL_ALERTS: CampusAlert[] = [
+  {
+    id: 'alert-2026-001',
+    title: 'FLASH FLOOD / WATERLOGGING ADVISORY',
+    message: 'Heavy localized rainfall has flooded the low-lying subway connecting Campus 3 and Campus 11. Use the foot overbridge until water recedes.',
+    severity: 'warning',
+    category: 'weather',
+    targetArea: 'Subway Connector (Campus 3 to 11)',
+    active: true,
+    createdBy: 'admin-001',
+    createdByName: 'Dr. Rajesh Mohanty (Campus Ops)',
+    createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
+    expiresAt: new Date(Date.now() + 180 * 60000).toISOString(),
+    acknowledgedCount: 342,
+  },
+  {
+    id: 'alert-2026-002',
+    title: 'CHEMISTRY COMPLEX VENTILATION MAINTENANCE',
+    message: 'Block C organic exhaust maintenance underway. Lab rooms 301-306 strictly closed until 18:00 hrs.',
+    severity: 'advisory',
+    category: 'facility',
+    targetArea: 'Science Complex Block C',
+    active: true,
+    createdBy: 'admin-001',
+    createdByName: 'Dr. Rajesh Mohanty (Campus Ops)',
+    createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
+    expiresAt: new Date(Date.now() + 240 * 60000).toISOString(),
+    acknowledgedCount: 189,
   }
 ];
 
@@ -227,9 +323,9 @@ export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [
     incidentId: 'inc-2026-003',
     action: 'INCIDENT_CREATED',
     performedBy: 'student-203',
-    performedByName: 'Rohan Mehra',
+    performedByName: 'Anonymous Reporter',
     performedByRole: 'student',
-    details: 'New high severity incident reported: Intimidation & Ragging Complaint at Boys Hostel 7',
+    details: 'New high severity confidential incident reported: Intimidation & Ragging Complaint at Boys Hostel 7',
     timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
   },
   {
@@ -249,7 +345,7 @@ export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [
     performedBy: 'mentor-103',
     performedByName: 'Capt. Suresh Panda',
     performedByRole: 'mentor',
-    details: 'Status changed from "assigned" to "in_progress". First responder dispatched.',
+    details: 'Status changed from "assigned" to "in_progress". First responder on-scene.',
     timestamp: new Date(Date.now() - 10 * 60000).toISOString(),
   },
   {
@@ -260,7 +356,7 @@ export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [
     performedByName: 'Dr. Rajesh Mohanty',
     performedByRole: 'admin',
     details: 'Assigned incident to Prof. Ananya Sen (School of Computer Engineering)',
-    timestamp: new Date(Date.now() - 35 * 60000).toISOString(),
+    timestamp: new Date(Date.now() - 65 * 60000).toISOString(),
   },
   {
     id: 'log-005',
@@ -271,5 +367,14 @@ export const INITIAL_ACTIVITY_LOGS: ActivityLog[] = [
     performedByRole: 'mentor',
     details: 'Marked resolved: Electrical short-circuit in Server Room AC Unit repaired.',
     timestamp: new Date(Date.now() - 40 * 60000).toISOString(),
+  },
+  {
+    id: 'log-006',
+    action: 'SYSTEM_ALERT',
+    performedBy: 'admin-001',
+    performedByName: 'Dr. Rajesh Mohanty',
+    performedByRole: 'admin',
+    details: 'Broadcasted campus safety alert: FLASH FLOOD / WATERLOGGING ADVISORY for Subway Connector',
+    timestamp: new Date(Date.now() - 45 * 60000).toISOString(),
   }
 ];

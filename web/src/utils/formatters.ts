@@ -116,6 +116,24 @@ export function getRoleBadgeColor(role: UserRole): string {
   }
 }
 
+export function getCategoryColor(category: IncidentCategory | string): string {
+  switch (category) {
+    case 'medical':
+      return 'bg-red-950/60 text-red-300 border-red-700/60';
+    case 'fire':
+      return 'bg-orange-950/60 text-orange-300 border-orange-700/60';
+    case 'security':
+      return 'bg-blue-950/60 text-blue-300 border-blue-700/60';
+    case 'facility':
+      return 'bg-slate-800 text-slate-300 border-slate-700';
+    case 'ragging':
+    case 'harassment':
+      return 'bg-purple-950/60 text-purple-300 border-purple-700/60';
+    default:
+      return 'bg-slate-800 text-teal-300 border-slate-700';
+  }
+}
+
 export function formatCategory(category: IncidentCategory | string): string {
   if (!category) return 'General';
   return category

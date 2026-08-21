@@ -1,166 +1,168 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
-  ShieldAlert,
-  Users,
-  History,
-  Settings,
-  LogOut,
+  AlertTriangle,
   Radio,
+  BarChart3,
+  Users,
+  ClipboardList,
+  Settings,
+  Shield,
+  X
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 import { useIncidents } from '../../hooks/useIncidents';
+import { useAlerts } from '../../hooks/useAlerts';
 
-export const Sidebar: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
-  isOpen,
-  onClose,
-}) => {
-  const { user, logout } = useAuth();
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { stats } = useIncidents();
-  const navigate = useNavigate();
+  const { alerts } = useAlerts(true);
 
-  const navItems = [
+  const navigation = [
     {
-      to: '/dashboard',
-      label: 'Dashboard',
-      icon: <LayoutDashboard className="w-5 h-5" />,
-      badge: null,
+      name: 'Command Center',
+      href: '/dashboard',
+      icon: LayoutDashboard,
     },
     {
-      to: '/incidents',
-      label: 'Incidents',
-      icon: <ShieldAlert className="w-5 h-5" />,
-      badge: stats.active > 0 ? stats.active : null,
-      badgeColor: stats.critical > 0 ? 'bg-red-500 text-white animate-pulse' : 'bg-teal-500/20 text-teal-300 border border-teal-500/40',
+      name: 'Incident Management',
+      href: '/incidents',
+      icon: AlertTriangle,
+      badge: stats.active > 0 ? stats.active : undefined,
+      badgeVariant: stats.critical > 0 ? 'critical' : 'active',
     },
     {
-      to: '/users',
-      label: 'Users & Mentors',
-      icon: <Users className="w-5 h-5" />,
-      badge: null,
+      name: 'Broadcast Alerts',
+      href: '/alerts',
+      icon: Radio,
+      badge: alerts.length > 0 ? alerts.length : undefined,
+      badgeVariant: 'warning',
     },
     {
-      to: '/activity-logs',
-      label: 'Activity Logs',
-      icon: <History className="w-5 h-5" />,
-      badge: null,
+      name: 'Safety Intelligence',
+      href: '/analytics',
+      icon: BarChart3,
     },
     {
-      to: '/settings',
-      label: 'Settings & Config',
-      icon: <Settings className="w-5 h-5" />,
-      badge: null,
+      name: 'User Directory',
+      href: '/users',
+      icon: Users,
+    },
+    {
+      name: 'System Audit Logs',
+      href: '/activity-logs',
+      icon: ClipboardList,
+    },
+    {
+      name: 'Settings & Status',
+      href: '/settings',
+      icon: Settings,
     },
   ];
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
   return (
     <>
-      {/* Mobile backdrop */}
+      {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-slate-950/80 z-30 lg:hidden backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
 
+      {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-40 w-64 bg-slate-900/95 border-r border-slate-800/80 flex flex-col transition-transform duration-200 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 glass-panel border-r border-slate-800/80 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Brand Header */}
-        <div className="h-16 px-6 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/50">
+        {/* Branding Header */}
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800/80">
           <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-slate-950 font-black shadow-glow-teal">
-              <Radio className="w-5 h-5 text-slate-950 animate-pulse" />
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-glow-teal p-2">
+              <Shield className="w-full h-full text-slate-950 stroke-[2.5]" />
             </div>
             <div>
-              <h1 className="font-extrabold text-base tracking-tight text-white flex items-center gap-1.5">
+              <h1 className="font-extrabold text-white text-base tracking-tight leading-none">
                 CampusResQ
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-300 font-mono border border-teal-500/30">
-                  ADMIN
-                </span>
               </h1>
-              <p className="text-[11px] text-slate-400 font-medium">Emergency Ops Center</p>
+              <p className="text-[10px] text-teal-400 font-mono font-semibold tracking-wider mt-0.5 uppercase">
+                Admin Console
+              </p>
             </div>
           </div>
+
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Navigation Items */}
-        <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-          <div className="px-3 pb-2">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Navigation</p>
-          </div>
-
-          {navItems.map((item) => (
+        {/* Navigation Links */}
+        <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+          {navigation.map((item) => (
             <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onClose}
+              key={item.name}
+              to={item.href}
+              onClick={() => onClose()}
               className={({ isActive }) =>
-                `flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 group ${
+                `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30 shadow-glow-teal'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-850'
                 }`
               }
             >
-              <div className="flex items-center gap-3">
-                <span className="text-slate-400 group-hover:text-teal-400 transition-colors">
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
-              </div>
-              {item.badge !== null && (
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-bold font-mono ${item.badgeColor}`}
-                >
-                  {item.badge}
-                </span>
+              {({ isActive }) => (
+                <>
+                  <div className="flex items-center gap-3">
+                    <item.icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? 'text-teal-400' : 'text-slate-400'
+                      }`}
+                    />
+                    <span>{item.name}</span>
+                  </div>
+
+                  {item.badge !== undefined && (
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                        item.badgeVariant === 'critical'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/40 animate-pulse'
+                          : item.badgeVariant === 'warning'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-slate-800 text-teal-400 border border-slate-700'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                  )}
+                </>
               )}
             </NavLink>
           ))}
         </div>
 
-        {/* Live Broadcast Pulse Card */}
-        <div className="p-4 mx-3 mb-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              Live Feed
-            </span>
-            <span className="text-slate-500 font-mono text-[10px]">v1.0.0</span>
-          </div>
-          <p className="text-xs text-slate-400 leading-snug">
-            Listening for student SOS dispatches across campus sectors.
-          </p>
-        </div>
-
-        {/* Current User & Logout */}
-        <div className="p-4 border-t border-slate-800/80 bg-slate-950/40">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 font-bold text-sm uppercase flex-shrink-0">
-                {user?.name ? user.name.charAt(0) : 'A'}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{user?.name || 'Administrator'}</p>
-                <p className="text-[11px] text-slate-400 truncate">{user?.email || 'admin@campusresq.edu'}</p>
-              </div>
+        {/* System Status Footer */}
+        <div className="p-4 border-t border-slate-800/80">
+          <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">System Gateway</span>
+              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                ONLINE
+              </span>
             </div>
-            <button
-              onClick={handleLogout}
-              title="Logout"
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            <p className="text-[10px] text-slate-500 font-mono">
+              3 Commercial Modules Active
+            </p>
           </div>
         </div>
       </aside>

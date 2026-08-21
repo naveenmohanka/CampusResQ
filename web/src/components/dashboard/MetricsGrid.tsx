@@ -1,56 +1,60 @@
 import React from 'react';
-import { ShieldAlert, AlertTriangle, CheckCircle2, Flame } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { StatCard } from '../common/StatCard';
 import { IncidentStats } from '../../types/incident';
 
-export const MetricsGrid: React.FC<{ stats: IncidentStats; onCardClick?: (filter: string) => void }> = ({
-  stats,
-  onCardClick,
-}) => {
-  const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
+interface MetricsGridProps {
+  stats: IncidentStats;
+  onCardClick?: (filter: string) => void;
+}
+
+export const MetricsGrid: React.FC<MetricsGridProps> = ({ stats, onCardClick }) => {
+  const resolutionRate = stats.total > 0
+    ? Math.round((stats.resolved / stats.total) * 100)
+    : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
         title="Total Incidents"
         value={stats.total}
-        subtitle="All campus logs"
-        icon={<ShieldAlert className="w-5 h-5 text-teal-400" />}
+        subtitle="Campus Lifetime Reports"
+        icon={<AlertCircle className="w-6 h-6" />}
         accent="cyan"
-        onClick={() => onCardClick && onCardClick('all')}
+        onClick={() => onCardClick?.('all')}
       />
 
       <StatCard
         title="Active Incidents"
         value={stats.active}
-        subtitle={`${stats.reported} reported • ${stats.inProgress} ongoing`}
-        trend={stats.active > 0 ? 'Requires attention' : 'All clear'}
-        trendType={stats.active > 3 ? 'urgent' : 'neutral'}
-        icon={<AlertTriangle className="w-5 h-5 text-amber-400" />}
+        subtitle="Unresolved Emergencies"
+        icon={<AlertTriangle className="w-6 h-6" />}
+        trend={stats.active > 0 ? `${stats.active} Pending Dispatch` : 'All Clear'}
+        trendType={stats.active > 0 ? 'urgent' : 'positive'}
         accent="amber"
-        onClick={() => onCardClick && onCardClick('active')}
+        onClick={() => onCardClick?.('in_progress')}
       />
 
       <StatCard
-        title="Critical Priority"
+        title="Critical Threats"
         value={stats.critical}
-        subtitle="Emergency level SOS"
-        trend={stats.critical > 0 ? 'IMMEDIATE RESPONSE' : 'Normal status'}
+        subtitle="Life Safety Priority"
+        icon={<ShieldCheck className="w-6 h-6" />}
+        trend={stats.critical > 0 ? 'Urgent Action Required' : '0 Life Threats'}
         trendType={stats.critical > 0 ? 'urgent' : 'positive'}
-        icon={<Flame className="w-5 h-5 text-red-400" />}
         accent="red"
-        onClick={() => onCardClick && onCardClick('critical')}
+        onClick={() => onCardClick?.('critical')}
       />
 
       <StatCard
-        title="Resolved"
+        title="Resolved Cases"
         value={stats.resolved}
-        subtitle={`${resolutionRate}% resolution rate`}
-        trend={`${resolutionRate}% solved`}
+        subtitle={`${resolutionRate}% Overall Resolution Rate`}
+        icon={<CheckCircle2 className="w-6 h-6" />}
+        trend={`${resolutionRate}% Success`}
         trendType="positive"
-        icon={<CheckCircle2 className="w-5 h-5 text-emerald-400" />}
         accent="emerald"
-        onClick={() => onCardClick && onCardClick('resolved')}
+        onClick={() => onCardClick?.('resolved')}
       />
     </div>
   );

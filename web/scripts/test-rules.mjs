@@ -31,7 +31,8 @@ const database = {
       reporterId: 'student-123',
       assignedTo: 'mentor-789',
       status: 'assigned',
-      severity: 'high'
+      severity: 'high',
+      isAnonymous: false
     },
     'inc-002': {
       id: 'inc-002',
@@ -39,7 +40,26 @@ const database = {
       reporterId: 'student-456',
       assignedTo: null,
       status: 'reported',
-      severity: 'low'
+      severity: 'low',
+      isAnonymous: false
+    },
+    'inc-003': {
+      id: 'inc-003',
+      title: 'Confidential Harassment Report',
+      reporterId: 'student-123',
+      assignedTo: null,
+      status: 'reported',
+      severity: 'high',
+      isAnonymous: true
+    }
+  },
+  alerts: {
+    'alert-001': {
+      id: 'alert-001',
+      title: 'Severe Weather Warning',
+      severity: 'warning',
+      active: true,
+      createdBy: 'admin-001'
     }
   },
   activityLogs: {
@@ -99,7 +119,6 @@ class FirestoreSecurityEvaluator {
 
   canUpdateUser(auth, targetUserId, existingData, newResourceData) {
     if (!this.isAuthenticated(auth)) return false;
-    // Allow user to update their own profile ONLY if role remains identical
     const isSelfWithSameRole = (auth.uid === targetUserId) && (newResourceData.role === existingData.role);
     return isSelfWithSameRole || this.isAdmin(auth);
   }
@@ -142,14 +161,33 @@ class FirestoreSecurityEvaluator {
     return this.isAdmin(auth);
   }
 
-  // --- Collection: activityLogs/{logId} ---
+  // --- Collection: alerts/{alertId} (Module 2) ---
+  canReadAlert(auth) {
+    return this.isAuthenticated(auth);
+  }
+
+  canCreateAlert(auth) {
+    return this.isAdmin(auth);
+  }
+
+  canUpdateAlert(auth) {
+    return this.isAdmin(auth);
+  }
+
+  canDeleteAlert(auth) {
+    return this.isAdmin(auth);
+  }
+
+  // --- Collection: activityLogs/{logId} (Anti-Forgery) ---
   canReadActivityLogs(auth) {
     if (!this.isAuthenticated(auth)) return false;
     return this.isAdmin(auth) || this.isMentor(auth);
   }
 
-  canCreateActivityLog(auth) {
-    return this.isAuthenticated(auth);
+  canCreateActivityLog(auth, logData) {
+    if (!this.isAuthenticated(auth)) return false;
+    // Strict anti-forgery: actor UID in payload MUST equal authenticated UID
+    return logData.performedBy === auth.uid;
   }
 
   canUpdateActivityLog() {
@@ -158,6 +196,15 @@ class FirestoreSecurityEvaluator {
 
   canDeleteActivityLog() {
     return false; // Immutable
+  }
+
+  // --- Storage: Evidence Protection ---
+  canReadEvidence(auth, incident) {
+    if (!this.isAuthenticated(auth)) return false;
+    if (this.isAdmin(auth)) return true;
+    if (this.isMentor(auth)) return true;
+    if (this.isStudent(auth) && incident.reporterId === auth.uid) return true;
+    return false;
   }
 }
 
@@ -179,6 +226,11 @@ const tests = [
     category: '1. Unauthenticated Security',
     name: 'Unauthenticated -> Create incident -> DENIED',
     run: () => !evaluator.canCreateIncident(null, { reporterId: 'student-123' })
+  },
+  {
+    category: '1. Unauthenticated Security',
+    name: 'Unauthenticated -> Read broadcast alerts -> DENIED',
+    run: () => !evaluator.canReadAlert(null)
   },
 
   // 2. Student Permissions & Anti-Privilege Escalation
@@ -250,14 +302,80 @@ const tests = [
     run: () => !evaluator.canReadActivityLogs({ uid: 'student-123' })
   },
 
-  // 3. Mentor Permissions
+  // 3. Module 2: Broadcast Alert Security
   {
-    category: '3. Mentor Permissions',
+    category: '3. Broadcast Alert Security (Module 2)',
+    name: 'Student -> Read broadcast alerts -> ALLOWED',
+    run: () => evaluator.canReadAlert({ uid: 'student-123' })
+  },
+  {
+    category: '3. Broadcast Alert Security (Module 2)',
+    name: 'Student -> Create emergency broadcast alert -> DENIED',
+    run: () => !evaluator.canCreateAlert({ uid: 'student-123' })
+  },
+  {
+    category: '3. Broadcast Alert Security (Module 2)',
+    name: 'Mentor -> Create emergency broadcast alert -> DENIED',
+    run: () => !evaluator.canCreateAlert({ uid: 'mentor-789' })
+  },
+  {
+    category: '3. Broadcast Alert Security (Module 2)',
+    name: 'Admin -> Create emergency broadcast alert -> ALLOWED',
+    run: () => evaluator.canCreateAlert({ uid: 'admin-001' })
+  },
+  {
+    category: '3. Broadcast Alert Security (Module 2)',
+    name: 'Admin -> Deactivate/Expire broadcast alert -> ALLOWED',
+    run: () => evaluator.canUpdateAlert({ uid: 'admin-001' })
+  },
+
+  // 4. Audit Log Anti-Forgery
+  {
+    category: '4. Audit Log Anti-Forgery',
+    name: 'User -> Create audit log with matching UID -> ALLOWED',
+    run: () => evaluator.canCreateActivityLog({ uid: 'student-123' }, { performedBy: 'student-123', action: 'INCIDENT_CREATED' })
+  },
+  {
+    category: '4. Audit Log Anti-Forgery',
+    name: 'User -> Forge audit log with another user UID (Impersonation) -> DENIED',
+    run: () => !evaluator.canCreateActivityLog({ uid: 'student-123' }, { performedBy: 'admin-001', action: 'SYSTEM_ALERT' })
+  },
+  {
+    category: '4. Audit Log Anti-Forgery',
+    name: 'Any User -> Mutate existing audit log -> DENIED (Immutable)',
+    run: () => !evaluator.canUpdateActivityLog()
+  },
+  {
+    category: '4. Audit Log Anti-Forgery',
+    name: 'Any User -> Delete existing audit log -> DENIED (Immutable)',
+    run: () => !evaluator.canDeleteActivityLog()
+  },
+
+  // 5. Evidence & Anonymous Privacy
+  {
+    category: '5. Evidence & Anonymous Privacy (Module 1 & 4)',
+    name: 'Student -> Read own incident evidence -> ALLOWED',
+    run: () => evaluator.canReadEvidence({ uid: 'student-123' }, database.incidents['inc-001'])
+  },
+  {
+    category: '5. Evidence & Anonymous Privacy (Module 1 & 4)',
+    name: 'Student -> Read another student incident evidence -> DENIED',
+    run: () => !evaluator.canReadEvidence({ uid: 'student-123' }, database.incidents['inc-002'])
+  },
+  {
+    category: '5. Evidence & Anonymous Privacy (Module 1 & 4)',
+    name: 'Admin -> Read confidential / anonymous incident evidence -> ALLOWED',
+    run: () => evaluator.canReadEvidence({ uid: 'admin-001' }, database.incidents['inc-003'])
+  },
+
+  // 6. Mentor Permissions
+  {
+    category: '6. Mentor Permissions',
     name: 'Mentor -> Read active campus incidents -> ALLOWED',
     run: () => evaluator.canReadIncident({ uid: 'mentor-789' }, database.incidents['inc-001'])
   },
   {
-    category: '3. Mentor Permissions',
+    category: '6. Mentor Permissions',
     name: 'Mentor -> Update incident assigned to them -> ALLOWED',
     run: () => {
       const existing = database.incidents['inc-001'];
@@ -266,7 +384,7 @@ const tests = [
     }
   },
   {
-    category: '3. Mentor Permissions',
+    category: '6. Mentor Permissions',
     name: 'Mentor -> Update incident assigned to someone else -> DENIED',
     run: () => {
       const existing = database.incidents['inc-001'];
@@ -275,7 +393,7 @@ const tests = [
     }
   },
   {
-    category: '3. Mentor Permissions',
+    category: '6. Mentor Permissions',
     name: 'Mentor -> User-role modification (promote to admin) -> DENIED',
     run: () => {
       const existing = database.users['mentor-789'];
@@ -284,29 +402,29 @@ const tests = [
     }
   },
   {
-    category: '3. Mentor Permissions',
+    category: '6. Mentor Permissions',
     name: 'Mentor -> Delete incident -> DENIED',
     run: () => !evaluator.canDeleteIncident({ uid: 'mentor-789' })
   },
   {
-    category: '3. Mentor Permissions',
+    category: '6. Mentor Permissions',
     name: 'Mentor -> Read activity logs -> ALLOWED',
     run: () => evaluator.canReadActivityLogs({ uid: 'mentor-789' })
   },
 
-  // 4. Admin Permissions
+  // 7. Admin Permissions
   {
-    category: '4. Admin Full Access',
+    category: '7. Admin Full Access',
     name: 'Admin -> Read any user profile -> ALLOWED',
     run: () => evaluator.canReadUser({ uid: 'admin-001' }, 'student-123') && evaluator.canReadUser({ uid: 'admin-001' }, 'mentor-789')
   },
   {
-    category: '4. Admin Full Access',
+    category: '7. Admin Full Access',
     name: 'Admin -> Read any incident -> ALLOWED',
     run: () => evaluator.canReadIncident({ uid: 'admin-001' }, database.incidents['inc-001']) && evaluator.canReadIncident({ uid: 'admin-001' }, database.incidents['inc-002'])
   },
   {
-    category: '4. Admin Full Access',
+    category: '7. Admin Full Access',
     name: 'Admin -> Reassign mentor to incident -> ALLOWED',
     run: () => {
       const existing = database.incidents['inc-001'];
@@ -315,26 +433,14 @@ const tests = [
     }
   },
   {
-    category: '4. Admin Full Access',
+    category: '7. Admin Full Access',
     name: 'Admin -> Delete incident -> ALLOWED',
     run: () => evaluator.canDeleteIncident({ uid: 'admin-001' })
   },
   {
-    category: '4. Admin Full Access',
+    category: '7. Admin Full Access',
     name: 'Admin -> Read activity audit logs -> ALLOWED',
     run: () => evaluator.canReadActivityLogs({ uid: 'admin-001' })
-  },
-
-  // 5. Activity Log Immutability
-  {
-    category: '5. Audit Trail Immutability',
-    name: 'Any User -> Update existing activity log record -> DENIED (Immutable)',
-    run: () => !evaluator.canUpdateActivityLog()
-  },
-  {
-    category: '5. Audit Trail Immutability',
-    name: 'Any User -> Delete activity log record -> DENIED (Immutable)',
-    run: () => !evaluator.canDeleteActivityLog()
   }
 ];
 
@@ -370,6 +476,6 @@ console.log('======================================================\n');
 if (failed > 0) {
   process.exit(1);
 } else {
-  console.log('ALL SECURITY RULES AND RBAC CONSTRAINTS VERIFIED SUCCESSFULLY.\n');
+  console.log('ALL SECURITY RULES, MODULE 2 ALERTS & RBAC CONSTRAINTS VERIFIED SUCCESSFULLY.\n');
   process.exit(0);
 }

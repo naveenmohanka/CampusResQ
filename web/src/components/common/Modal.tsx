@@ -1,4 +1,4 @@
-import React, { useEffect, ReactNode } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -6,7 +6,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl';
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -39,29 +39,35 @@ export const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
     '4xl': 'max-w-4xl',
-  }[maxWidth];
+  }[maxWidth] || maxWidth;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity animate-in fade-in"
+        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
-      {/* Dialog box */}
-      <div
-        className={`relative w-full ${maxWidthClass} glass-panel border border-slate-700/80 rounded-2xl shadow-2xl z-10 overflow-hidden transform animate-in zoom-in-95 duration-150`}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60">
-          <h3 className="text-lg font-bold text-white tracking-wide">{title}</h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+      {/* Modal dialog */}
+      <div className="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+        <div
+          className={`relative transform overflow-hidden rounded-2xl glass-panel text-left shadow-2xl transition-all sm:my-8 w-full ${maxWidthClass} border border-slate-800 animate-in fade-in zoom-in-95 duration-200`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-800/80 px-6 py-4">
+            <h3 className="text-base font-bold text-white leading-6">{title}</h3>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-5">{children}</div>
         </div>
-        <div className="p-6">{children}</div>
       </div>
     </div>
   );

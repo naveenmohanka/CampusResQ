@@ -2,27 +2,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Check if client is authenticated with Firebase Auth
+    // Helper: Check if client is authenticated with Firebase Auth
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Retrieve user document data from Firestore
+    // Helper: Retrieve user profile document from Firestore
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Check if the authenticated user has verified 'admin' role in Firestore
+    // Helper: Check if the authenticated user has verified 'admin' role in Firestore
     function isAdmin() {
       return isAuthenticated() && getUserData().role == 'admin';
     }
 
-    // Check if the authenticated user has verified 'mentor' role in Firestore
+    // Helper: Check if the authenticated user has verified 'mentor' role in Firestore
     function isMentor() {
       return isAuthenticated() && getUserData().role == 'mentor';
     }
 
-    // Check if the authenticated user has verified 'student' role in Firestore
+    // Helper: Check if the authenticated user has verified 'student' role in Firestore
     function isStudent() {
       return isAuthenticated() && getUserData().role == 'student';
     }
@@ -53,10 +53,10 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 2. Incidents Collection Security Rules
+    // 2. Incidents Collection Security Rules (Module 1 & 4)
     // ===============================================================
     match /incidents/{incidentId} {
-      // Students can read their own reported incidents; Mentors & Admins can read all active incidents
+      // Students can read their own reported incidents; Mentors & Admins can read active incidents
       allow read: if isAuthenticated() && (
         isAdmin() || 
         isMentor() || 
@@ -82,14 +82,27 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 3. Activity Logs Collection Security Rules (Immutable Audit Trail)
+    // 3. Campus Broadcast Alerts Collection (Module 2)
+    // ===============================================================
+    match /alerts/{alertId} {
+      // Any authenticated campus user can read broadcast alerts
+      allow read: if isAuthenticated();
+      
+      // ONLY verified Administrators can create, publish, or deactivate campus emergency alerts
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 4. Activity Logs Collection Security Rules (Immutable Audit Trail)
+    // PREVENTS AUDIT FORGERY AND IMPERSONATION
     // ===============================================================
     match /activityLogs/{logId} {
       // Authenticated mentors and admins can view activity audit logs; Students are DENIED
       allow read: if isAuthenticated() && (isAdmin() || isMentor());
       
-      // System & authenticated operations can append audit log records
-      allow create: if isAuthenticated();
+      // Strict Anti-Forgery: Actor UID MUST correspond to authenticated request.auth.uid
+      allow create: if isAuthenticated() && 
+                    request.resource.data.performedBy == request.auth.uid;
       
       // Audit logs are strictly immutable: no updates or deletions permitted
       allow update, delete: if false;

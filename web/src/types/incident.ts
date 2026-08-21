@@ -1,15 +1,15 @@
+export type IncidentCategory = 
+  | 'medical' 
+  | 'fire' 
+  | 'security' 
+  | 'facility' 
+  | 'ragging' 
+  | 'harassment' 
+  | 'other';
+
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 
 export type IncidentStatus = 'reported' | 'assigned' | 'in_progress' | 'resolved';
-
-export type IncidentCategory = 
-  | 'medical'
-  | 'fire'
-  | 'security'
-  | 'facility'
-  | 'ragging'
-  | 'harassment'
-  | 'other';
 
 export interface IncidentLocation {
   latitude: number;
@@ -17,6 +17,16 @@ export interface IncidentLocation {
   address: string;
   building?: string;
   floor?: string;
+}
+
+export interface EvidenceItem {
+  id: string;
+  url: string;
+  name: string;
+  size?: number;
+  mimeType?: string;
+  uploadedAt: string;
+  uploadedBy?: string;
 }
 
 export interface Incident {
@@ -27,36 +37,49 @@ export interface Incident {
   severity: IncidentSeverity;
   status: IncidentStatus;
   location: IncidentLocation;
+  
+  // Reporter details & Privacy
   reporterId: string;
   reporterName: string;
-  reporterEmail: string;
+  reporterEmail?: string;
   reporterPhone?: string;
+  isAnonymous?: boolean;
+  
+  // Assigned Responder
   assignedTo?: string | null;
   assignedToName?: string | null;
   assignedToEmail?: string | null;
-  resolutionNotes?: string;
-  resolvedAt?: string;
-  createdAt: string;
-  updatedAt: string;
+  assignedToPhone?: string | null;
+  
+  // Evidence & Media
   images?: string[];
+  evidence?: EvidenceItem[];
+  
+  // Resolution details
+  resolutionNotes?: string;
+  
+  // Lifecycle Timestamps for Intelligence & SLA tracking
+  createdAt: string;
+  assignedAt?: string;
+  acknowledgedAt?: string;
+  inProgressAt?: string;
+  resolvedAt?: string;
+  updatedAt?: string;
 }
 
 export interface IncidentFilters {
   status?: IncidentStatus | 'all';
   severity?: IncidentSeverity | 'all';
   category?: IncidentCategory | 'all';
+  assignedTo?: string | 'all';
   searchQuery?: string;
-  assignedTo?: string | 'all' | 'unassigned';
-  sortBy?: 'createdAt' | 'severity' | 'status' | 'updatedAt';
-  sortDirection?: 'asc' | 'desc';
+  isAnonymous?: boolean;
 }
 
 export interface IncidentStats {
   total: number;
   active: number;
-  resolved: number;
   critical: number;
-  reported: number;
-  assigned: number;
-  inProgress: number;
+  resolved: number;
+  avgResponseTimeMinutes?: number;
 }

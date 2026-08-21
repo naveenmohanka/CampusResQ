@@ -1,45 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Clock,
-  UserPlus,
-  Edit3,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
 import { getIncidentById, updateIncidentSeverity } from '../../services/incidentService';
 import { Incident, IncidentSeverity } from '../../types/incident';
-import { useActivityLogs } from '../../hooks/useActivityLogs';
-import { SeverityBadge, StatusBadge } from '../../components/common/Badge';
+import { SeverityBadge, StatusBadge, CategoryBadge } from '../../components/common/Badge';
+import { Button } from '../../components/common/Button';
 import { IncidentMap } from '../../components/common/IncidentMap';
 import { ActivityTimeline } from '../../components/activity/ActivityTimeline';
 import { AssignMentorModal } from '../../components/incidents/AssignMentorModal';
 import { UpdateStatusModal } from '../../components/incidents/UpdateStatusModal';
-import { Button } from '../../components/common/Button';
-import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
-import { formatCategory } from '../../utils/formatters';
 import { useAuth } from '../../hooks/useAuth';
+import { useActivityLogs } from '../../hooks/useActivityLogs';
 import { useNotification } from '../../context/NotificationContext';
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Phone,
+  Clock,
+  UserCheck,
+  CheckCircle2,
+  Lock,
+  Eye,
+  ShieldCheck,
+  Zap,
+  Image as ImageIcon
+} from 'lucide-react';
+import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
 
 export const IncidentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { logs } = useActivityLogs();
   const { showToast } = useNotification();
 
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [selectedPreviewImage, setSelectedPreviewImage] = useState<string | null>(null);
 
-  const { logs } = useActivityLogs({ incidentId: id });
-
-  const loadData = async () => {
+  const fetchIncident = async () => {
     if (!id) return;
-    setLoading(true);
     try {
+      setLoading(true);
       const data = await getIncidentById(id);
+      if (!data) {
+        navigate('/incidents');
+        return;
+      }
       setIncident(data);
     } catch (err) {
       console.error(err);
@@ -49,7 +58,7 @@ export const IncidentDetail: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
+    fetchIncident();
   }, [id]);
 
   const handleSeverityChange = async (newSev: IncidentSeverity) => {
@@ -58,249 +67,340 @@ export const IncidentDetail: React.FC = () => {
       await updateIncidentSeverity(incident.id, newSev, user.id, user.name);
       setIncident({ ...incident, severity: newSev });
       showToast({
-        type: 'warning',
-        title: 'Severity Escalated',
-        message: `Incident severity set to ${newSev.toUpperCase()}`,
+        type: 'info',
+        title: 'Severity Updated',
+        message: `Threat level escalated/updated to ${newSev.toUpperCase()}`,
       });
     } catch (err: any) {
-      showToast({
-        type: 'error',
-        title: 'Update Failed',
-        message: err.message || 'Could not update severity.',
-      });
+      showToast({ type: 'error', title: 'Error', message: err.message });
     }
   };
 
   if (loading) {
-    return (
-      <div className="p-8 text-center text-slate-400 space-y-4">
-        <div className="w-12 h-12 rounded-full border-2 border-teal-500 border-t-transparent animate-spin mx-auto" />
-        <p className="text-sm">Loading incident details from database...</p>
-      </div>
-    );
+    return <div className="py-12 text-center text-xs text-slate-400">Loading incident dossier...</div>;
   }
 
   if (!incident) {
-    return (
-      <div className="glass-panel p-12 text-center rounded-2xl border border-slate-800 space-y-4">
-        <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-lg font-bold text-white">Incident Not Found</h2>
-        <p className="text-sm text-slate-400">
-          The requested incident ID "{id}" does not exist or has been archived.
-        </p>
-        <Button variant="secondary" onClick={() => navigate('/incidents')}>
-          Return to Incidents
-        </Button>
-      </div>
-    );
+    return <div className="py-12 text-center text-xs text-slate-400">Incident record not found.</div>;
   }
+
+  // Calculate actual response time if assigned
+  let responseMinutes: number | null = null;
+  if (incident.assignedAt && incident.createdAt) {
+    const c = new Date(incident.createdAt).getTime();
+    const a = new Date(incident.assignedAt).getTime();
+    if (a >= c) {
+      responseMinutes = Math.round(((a - c) / 60000) * 10) / 10;
+    }
+  }
+
+  const incidentLogs = logs.filter(l => l.incidentId === incident.id);
 
   return (
     <div className="space-y-6">
-      {/* Top Breadcrumb & Actions Bar */}
+      {/* Back link & Top bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/incidents"
-            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-teal-400 font-semibold">{incident.id}</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-xs text-slate-400">{formatCategory(incident.category)}</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight mt-0.5">
-              {incident.title}
-            </h1>
-          </div>
-        </div>
+        <Link
+          to="/incidents"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Incident Command List
+        </Link>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2">
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => setAssignModalOpen(true)}
-            icon={<UserPlus className="w-4 h-4 text-teal-400" />}
+            onClick={() => setIsAssignModalOpen(true)}
+            icon={<UserCheck className="w-3.5 h-3.5" />}
           >
-            {incident.assignedToName ? 'Reassign Mentor' : 'Assign Mentor'}
+            {incident.assignedTo ? 'Reassign Responder' : 'Assign Responder'}
           </Button>
 
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setStatusModalOpen(true)}
-            icon={<Edit3 className="w-4 h-4" />}
+            onClick={() => setIsStatusModalOpen(true)}
+            icon={<CheckCircle2 className="w-3.5 h-3.5" />}
           >
-            Update Status
+            Update Operational Status
           </Button>
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Main Info & Map */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Overview Card */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-3 pb-4 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <SeverityBadge severity={incident.severity} />
-                <StatusBadge status={incident.status} />
-              </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Clock className="w-3.5 h-3.5 text-slate-500" />
-                <span>Reported {formatDate(incident.createdAt)} ({formatTimeAgo(incident.createdAt)})</span>
-              </div>
+      {/* Main Dossier Header */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="font-mono text-xs font-bold text-teal-400">
+                TICKET #{incident.id}
+              </span>
+              <StatusBadge status={incident.status} />
+              <CategoryBadge category={incident.category} />
+              {incident.isAnonymous && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-700/60">
+                  <Lock className="w-3 h-3" />
+                  Confidential / Anonymous Report
+                </span>
+              )}
             </div>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Incident Description & Context
-              </h3>
-              <p className="text-sm text-slate-200 leading-relaxed bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
-                {incident.description}
-              </p>
-            </div>
-
-            {/* Resolution Report Section if resolved */}
-            {incident.status === 'resolved' && (
-              <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/30 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-400 font-semibold text-xs">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Incident Resolved & Closed</span>
-                  {incident.resolvedAt && (
-                    <span className="text-emerald-500/80 font-mono text-[11px]">
-                      • {formatDate(incident.resolvedAt)}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-300">
-                  {incident.resolutionNotes || 'All emergency procedures completed and verified.'}
-                </p>
-              </div>
-            )}
-
-            {/* Reporter & Responder Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              {/* Reporter Box */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Reported By (Student)
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-teal-400 font-bold">
-                    {incident.reporterName.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-white">{incident.reporterName}</h4>
-                    <p className="text-xs text-slate-400">{incident.reporterEmail}</p>
-                    {incident.reporterPhone && (
-                      <p className="text-xs text-teal-400 font-mono mt-0.5">{incident.reporterPhone}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Assigned Responder Box */}
-              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Assigned Mentor / Security
-                </p>
-                {incident.assignedToName ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-800 flex items-center justify-center text-indigo-300 font-bold">
-                      {incident.assignedToName.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">{incident.assignedToName}</h4>
-                      <p className="text-xs text-slate-400">{incident.assignedToEmail || 'Faculty Responder'}</p>
-                      <span className="inline-block text-[10px] text-indigo-400 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-800/40 mt-1">
-                        Active Lead Responder
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-2">
-                    <p className="text-xs text-amber-400">No mentor assigned yet.</p>
-                    <button
-                      onClick={() => setAssignModalOpen(true)}
-                      className="mt-1.5 text-xs text-teal-400 hover:text-teal-300 font-semibold flex items-center gap-1"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" /> Assign Response Lead
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <h1 className="text-2xl font-extrabold text-white tracking-tight">
+              {incident.title}
+            </h1>
           </div>
 
-          {/* Interactive Campus Map Coordinate Visualizer */}
-          <div>
-            <IncidentMap
-              location={incident.location}
-              title={incident.title}
-              severity={incident.severity}
-            />
+          {/* Threat Level Switcher */}
+          <div className="flex items-center gap-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+            <div className="text-right">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                Threat Level
+              </p>
+              <div className="mt-0.5">
+                <SeverityBadge severity={incident.severity} />
+              </div>
+            </div>
+            <select
+              value={incident.severity}
+              onChange={(e) => handleSeverityChange(e.target.value as IncidentSeverity)}
+              className="px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-teal-500"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
           </div>
         </div>
 
-        {/* Right 1 Col: Severity Controls & Audit Timeline */}
-        <div className="space-y-6">
-          {/* Quick Severity Control */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Threat Level Severity
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {(['low', 'medium', 'high', 'critical'] as IncidentSeverity[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => handleSeverityChange(s)}
-                  className={`py-2 px-3 rounded-xl text-xs font-semibold uppercase tracking-wider border transition-all ${
-                    incident.severity === s
-                      ? s === 'critical'
-                        ? 'bg-red-600 text-white border-red-500 font-bold shadow-glow-red'
-                        : 'bg-teal-500 text-slate-950 border-teal-400 font-bold shadow-glow-teal'
-                      : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Situation Report */}
+        <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
+          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+            Initial Situation Report
+          </h4>
+          <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+            {incident.description}
+          </p>
+        </div>
 
-          {/* Activity Logs Timeline */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Incident Audit Trail
-              </h3>
-              <span className="text-[11px] font-mono text-teal-400">{logs.length} events</span>
+        {/* Resolution Summary Box if Resolved */}
+        {incident.status === 'resolved' && incident.resolutionNotes && (
+          <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-200">
+            <h4 className="font-bold text-emerald-300 flex items-center gap-1.5 mb-1">
+              <CheckCircle2 className="w-4 h-4" />
+              Incident Resolution Report
+            </h4>
+            <p className="leading-relaxed">{incident.resolutionNotes}</p>
+            {incident.resolvedAt && (
+              <p className="text-[11px] text-emerald-400/80 mt-1 font-mono">
+                Resolved at: {formatDate(incident.resolvedAt)}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Grid: Reporter / Responder / Lifecycle SLA */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Reporter Dossier */}
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+          <h3 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+            <User className="w-4 h-4 text-teal-400" />
+            Reporting Party Information
+          </h3>
+
+          {incident.isAnonymous ? (
+            <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-purple-300">
+                <Lock className="w-4 h-4 text-purple-400" />
+                Identity Protected (Anonymous)
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                The student elected confidential reporting under the campus whistleblower & safety protection policy. Contact details are shielded.
+              </p>
             </div>
-            <ActivityTimeline logs={logs} />
+          ) : (
+            <div className="space-y-2 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-white">{incident.reporterName}</span>
+              </div>
+              {incident.reporterEmail && (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{incident.reporterEmail}</span>
+                </div>
+              )}
+              {incident.reporterPhone && (
+                <div className="flex items-center gap-2 text-slate-400 font-mono">
+                  <Phone className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{incident.reporterPhone}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Assigned Responder */}
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+          <h3 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+            <UserCheck className="w-4 h-4 text-teal-400" />
+            Designated Campus Responder
+          </h3>
+
+          {incident.assignedToName ? (
+            <div className="space-y-2 text-xs text-slate-300">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-white">{incident.assignedToName}</span>
+              </div>
+              {incident.assignedToEmail && (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{incident.assignedToEmail}</span>
+                </div>
+              )}
+              {incident.assignedAt && (
+                <div className="flex items-center gap-2 text-teal-400 font-mono text-[11px]">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Assigned: {formatTimeAgo(incident.assignedAt)}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-3 text-xs text-amber-400 flex items-center gap-2 font-medium">
+              <span>⚠️ No responder assigned yet.</span>
+            </div>
+          )}
+        </div>
+
+        {/* Lifecycle & SLA Timestamps */}
+        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+          <h3 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+            <Zap className="w-4 h-4 text-cyan-400" />
+            Response SLA & Lifecycle
+          </h3>
+
+          <div className="space-y-2 text-xs">
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Reported:</span>
+              <span className="font-mono text-white">{formatDate(incident.createdAt)}</span>
+            </div>
+            {incident.assignedAt && (
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Dispatched:</span>
+                <span className="font-mono text-white">{formatDate(incident.assignedAt)}</span>
+              </div>
+            )}
+            {responseMinutes !== null && (
+              <div className="flex items-center justify-between font-semibold pt-1 border-t border-slate-800">
+                <span className="text-teal-400">Dispatch Response Time:</span>
+                <span className="font-mono text-teal-300">{responseMinutes} minutes</span>
+              </div>
+            )}
+            {incident.resolvedAt && (
+              <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                <span>Resolved:</span>
+                <span className="font-mono text-emerald-300">{formatDate(incident.resolvedAt)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Evidence & Photo Section */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+              <ImageIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-base">Attached Incident Evidence & Media</h3>
+              <p className="text-xs text-slate-400">Encrypted evidence files stored under Firebase Storage</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-teal-400">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Access Controlled
+          </div>
+        </div>
+
+        {(!incident.images || incident.images.length === 0) && (!incident.evidence || incident.evidence.length === 0) ? (
+          <div className="py-6 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/40 text-xs text-slate-500">
+            No photographic evidence or attachments provided with this incident report.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {(incident.images || []).map((imgUrl, i) => (
+              <div
+                key={i}
+                onClick={() => setSelectedPreviewImage(imgUrl)}
+                className="group relative aspect-video rounded-xl overflow-hidden border border-slate-700 bg-slate-900 cursor-pointer shadow-lg hover:border-teal-500 transition-all"
+              >
+                <img
+                  src={imgUrl}
+                  alt={`Evidence ${i + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-semibold">
+                  <Eye className="w-4 h-4 text-teal-400" />
+                  View Full Evidence
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Real Coordinates & Campus Map Visualizer */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <h3 className="font-bold text-white text-base">Campus Location Telemetry</h3>
+        <IncidentMap
+          location={incident.location}
+          title={incident.title}
+          severity={incident.severity}
+        />
+      </div>
+
+      {/* Incident Audit Timeline */}
+      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+        <h3 className="font-bold text-white text-base">Incident Operations & Audit Trail</h3>
+        <ActivityTimeline logs={incidentLogs} />
+      </div>
+
       {/* Modals */}
       <AssignMentorModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
         incident={incident}
-        isOpen={assignModalOpen}
-        onClose={() => setAssignModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={fetchIncident}
       />
 
       <UpdateStatusModal
+        isOpen={isStatusModalOpen}
+        onClose={() => setIsStatusModalOpen(false)}
         incident={incident}
-        isOpen={statusModalOpen}
-        onClose={() => setStatusModalOpen(false)}
-        onSuccess={loadData}
+        onSuccess={fetchIncident}
       />
+
+      {/* Evidence Lightbox Modal */}
+      {selectedPreviewImage && (
+        <div
+          onClick={() => setSelectedPreviewImage(null)}
+          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+        >
+          <div className="max-w-4xl max-h-[90vh] relative">
+            <img
+              src={selectedPreviewImage}
+              alt="Evidence Preview"
+              className="max-w-full max-h-[85vh] rounded-2xl border border-slate-700 shadow-2xl object-contain"
+            />
+            <p className="text-center text-xs text-slate-400 mt-2">Click anywhere to close evidence preview</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

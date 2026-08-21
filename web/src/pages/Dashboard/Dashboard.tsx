@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Shield, AlertOctagon } from 'lucide-react';
 import { useIncidents } from '../../hooks/useIncidents';
 import { useActivityLogs } from '../../hooks/useActivityLogs';
 import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
@@ -8,88 +6,65 @@ import { StatusChart } from '../../components/dashboard/StatusChart';
 import { SeverityChart } from '../../components/dashboard/SeverityChart';
 import { LiveIncidentsWidget } from '../../components/dashboard/LiveIncidentsWidget';
 import { RecentActivityWidget } from '../../components/dashboard/RecentActivityWidget';
+import { ActiveAlertsWidget } from '../../components/alerts/ActiveAlertsWidget';
+import { ResponseTimeWidget } from '../../components/dashboard/ResponseTimeWidget';
+import { CreateAlertModal } from '../../components/alerts/CreateAlertModal';
 import { Button } from '../../components/common/Button';
-import { useNotification } from '../../context/NotificationContext';
-import { AssignMentorModal } from '../../components/incidents/AssignMentorModal';
-import { UpdateStatusModal } from '../../components/incidents/UpdateStatusModal';
-import { Incident } from '../../types/incident';
+import { Radio } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const { incidents, stats } = useIncidents();
+  const { incidents, stats, error } = useIncidents();
   const { logs } = useActivityLogs();
-  const { showToast } = useNotification();
-
-  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
-
-  const handleCardFilter = (filterType: string) => {
-    if (filterType === 'active') {
-      navigate('/incidents?status=reported');
-    } else if (filterType === 'critical') {
-      navigate('/incidents?severity=critical');
-    } else if (filterType === 'resolved') {
-      navigate('/incidents?status=resolved');
-    } else {
-      navigate('/incidents');
-    }
-  };
-
-  const handleSimulateAlert = () => {
-    showToast({
-      type: 'critical',
-      title: 'EMERGENCY BROADCAST ACTIVE',
-      message: 'Active emergency responders alerted across KIIT Campus Sector 1.',
-      duration: 6000,
-    });
-  };
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      {/* Header section */}
+      {/* Top Header & Quick Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-            Emergency Command Center
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            Emergency Operations Command Center
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Real-time incident response telemetry and university security monitoring.
+            Real-time incident response, live telemetry, and active campus alert dispatch.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <Button
-            variant="secondary"
+            variant="danger"
             size="sm"
-            onClick={() => navigate('/incidents')}
-            icon={<Shield className="w-4 h-4 text-teal-400" />}
+            onClick={() => setIsAlertModalOpen(true)}
+            icon={<Radio className="w-3.5 h-3.5 animate-pulse" />}
           >
-            Manage Incidents
-          </Button>
-
-          <Button
-            variant="emergency"
-            size="sm"
-            onClick={handleSimulateAlert}
-            icon={<AlertOctagon className="w-4 h-4" />}
-          >
-            Broadcast SOS Test
+            Broadcast Alert
           </Button>
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
-      <MetricsGrid stats={stats} onCardClick={handleCardFilter} />
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-200 text-xs">
+          <strong>Connection Error:</strong> {error.message}
+        </div>
+      )}
 
-      {/* Analytics Charts */}
+      {/* Module 2: Active Campus Broadcast Alerts */}
+      <ActiveAlertsWidget />
+
+      {/* 4 Primary KPI Summary Cards */}
+      <MetricsGrid stats={stats} />
+
+      {/* Module 3: Response Time & SLA Intelligence Widget */}
+      <ResponseTimeWidget />
+
+      {/* Analytics Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <StatusChart incidents={incidents} />
         <SeverityChart incidents={incidents} />
       </div>
 
-      {/* Live Streams Section */}
+      {/* Operational Stream Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <LiveIncidentsWidget incidents={incidents} />
@@ -99,23 +74,9 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Modals */}
-      <AssignMentorModal
-        incident={selectedIncident}
-        isOpen={assignModalOpen}
-        onClose={() => {
-          setAssignModalOpen(false);
-          setSelectedIncident(null);
-        }}
-      />
-
-      <UpdateStatusModal
-        incident={selectedIncident}
-        isOpen={statusModalOpen}
-        onClose={() => {
-          setStatusModalOpen(false);
-          setSelectedIncident(null);
-        }}
+      <CreateAlertModal
+        isOpen={isAlertModalOpen}
+        onClose={() => setIsAlertModalOpen(false)}
       />
     </div>
   );

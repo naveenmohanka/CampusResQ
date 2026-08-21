@@ -1,13 +1,15 @@
 import React, { ReactNode } from 'react';
 
-interface StatCardProps {
+export interface StatCardProps {
   title: string;
   value: number | string;
   subtitle?: string;
   icon: ReactNode;
   trend?: string;
   trendType?: 'positive' | 'negative' | 'neutral' | 'urgent';
-  accent?: 'red' | 'amber' | 'emerald' | 'cyan' | 'purple' | 'slate';
+  accent?: 'red' | 'amber' | 'emerald' | 'cyan' | 'teal' | 'purple' | 'slate';
+  accentColor?: string;
+  loading?: boolean;
   onClick?: () => void;
 }
 
@@ -19,25 +21,39 @@ export const StatCard: React.FC<StatCardProps> = ({
   trend,
   trendType = 'neutral',
   accent = 'cyan',
+  accentColor,
+  loading = false,
   onClick,
 }) => {
+  const chosenAccent = (accentColor as any) || accent;
   const accentGlow = {
     red: 'hover:border-red-500/50 group-hover:text-red-400 border-red-500/20 shadow-glow-red/20',
     amber: 'hover:border-amber-500/50 group-hover:text-amber-400 border-amber-500/20 shadow-glow-amber/20',
     emerald: 'hover:border-emerald-500/50 group-hover:text-emerald-400 border-emerald-500/20',
     cyan: 'hover:border-teal-500/50 group-hover:text-teal-400 border-teal-500/20 shadow-glow-teal/20',
+    teal: 'hover:border-teal-500/50 group-hover:text-teal-400 border-teal-500/20 shadow-glow-teal/20',
     purple: 'hover:border-purple-500/50 group-hover:text-purple-400 border-purple-500/20',
     slate: 'hover:border-slate-600 border-slate-800',
-  }[accent];
+  }[chosenAccent as string] || 'hover:border-teal-500/50 border-teal-500/20';
 
   const iconBg = {
     red: 'bg-red-500/10 text-red-400 border-red-500/30',
     amber: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     cyan: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
+    teal: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
     purple: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
     slate: 'bg-slate-800 text-slate-300 border-slate-700',
-  }[accent];
+  }[chosenAccent as string] || 'bg-teal-500/10 text-teal-400 border-teal-500/30';
+
+  if (loading) {
+    return (
+      <div className="glass-panel p-5 rounded-2xl border border-slate-800 animate-pulse">
+        <div className="h-4 bg-slate-800 rounded w-1/3 mb-3"></div>
+        <div className="h-8 bg-slate-800 rounded w-1/2"></div>
+      </div>
+    );
+  }
 
   return (
     <div

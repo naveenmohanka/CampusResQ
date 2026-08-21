@@ -1,7 +1,7 @@
 import React from 'react';
-import { IncidentSeverity, IncidentStatus } from '../../types/incident';
+import { IncidentSeverity, IncidentStatus, IncidentCategory } from '../../types/incident';
 import { UserRole } from '../../types/user';
-import { getSeverityColor, getStatusColor, getRoleBadgeColor, formatStatus } from '../../utils/formatters';
+import { getSeverityColor, getStatusColor, getRoleBadgeColor, formatStatus, getCategoryColor } from '../../utils/formatters';
 
 export const SeverityBadge: React.FC<{ severity: IncidentSeverity; showDot?: boolean }> = ({
   severity,
@@ -29,6 +29,15 @@ export const StatusBadge: React.FC<{ status: IncidentStatus; showDot?: boolean }
     >
       {showDot && <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />}
       {formatStatus(status)}
+    </span>
+  );
+};
+
+export const CategoryBadge: React.FC<{ category: IncidentCategory }> = ({ category }) => {
+  const color = getCategoryColor(category);
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize border ${color}`}>
+      {category}
     </span>
   );
 };

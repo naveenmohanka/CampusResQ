@@ -3,6 +3,8 @@ import { Login } from '../pages/Login/Login';
 import { Dashboard } from '../pages/Dashboard/Dashboard';
 import { Incidents } from '../pages/Incidents/Incidents';
 import { IncidentDetail } from '../pages/Incidents/IncidentDetail';
+import { AlertsPage } from '../pages/Alerts/Alerts';
+import { AnalyticsPage } from '../pages/Analytics/Analytics';
 import { UsersPage } from '../pages/Users/Users';
 import { ActivityLogsPage } from '../pages/ActivityLogs/ActivityLogs';
 import { SettingsPage } from '../pages/Settings/Settings';
@@ -37,6 +39,14 @@ export const router = createBrowserRouter([
       {
         path: 'incidents/:id',
         element: <IncidentDetail />,
+      },
+      {
+        path: 'alerts',
+        element: <AlertsPage />,
+      },
+      {
+        path: 'analytics',
+        element: <AnalyticsPage />,
       },
       {
         path: 'users',
