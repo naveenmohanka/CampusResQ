@@ -8,8 +8,12 @@ export interface AiAnalysis {
 
 /**
  * Robust utility to safely parse AI analysis data.
- * Handles JSON strings, pre-parsed objects, null/undefined, and malformed data.
- * NEVER crashes the dashboard.
+ * Handles:
+ * 1. Plain text string summary from Android (e.g. "Medical Emergency at Block B")
+ * 2. Structured JSON string from Android
+ * 3. Pre-parsed JavaScript object
+ * 4. null / undefined / malformed data
+ * NEVER crashes the dashboard or destructively alters Android data.
  */
 export function parseAiAnalysis(raw: any): AiAnalysis | null {
   if (!raw) return null;
@@ -19,10 +23,21 @@ export function parseAiAnalysis(raw: any): AiAnalysis | null {
     if (typeof raw === 'string') {
       const trimmed = raw.trim();
       if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
-      data = JSON.parse(trimmed);
+      try {
+        data = JSON.parse(trimmed);
+      } catch {
+        // If raw is a plain text summary from Android AI model
+        return {
+          severity: 'MEDIUM',
+          summary: trimmed,
+        };
+      }
     }
 
     if (typeof data !== 'object' || data === null) {
+      if (typeof data === 'string') {
+        return { severity: 'MEDIUM', summary: data };
+      }
       return null;
     }
 
@@ -39,7 +54,12 @@ export function parseAiAnalysis(raw: any): AiAnalysis | null {
       ? data.priorityScore
       : data.priorityScore ? Number(data.priorityScore) : undefined;
 
-    const summary = typeof data.summary === 'string' ? data.summary.trim() : undefined;
+    const summary = typeof data.summary === 'string'
+      ? data.summary.trim()
+      : typeof data.description === 'string'
+      ? data.description.trim()
+      : undefined;
+
     const suggestedAction = typeof data.suggestedAction === 'string' ? data.suggestedAction.trim() : undefined;
     const requiresImmediateResponse = Boolean(data.requiresImmediateResponse);
 
@@ -51,7 +71,7 @@ export function parseAiAnalysis(raw: any): AiAnalysis | null {
       requiresImmediateResponse,
     };
   } catch (err) {
-    console.warn('CampusResQ: Failed to parse aiAnalysis safely:', err);
+    console.warn('CampusResQ: Handled unexpected aiAnalysis structure safely:', err);
     return null;
   }
 }

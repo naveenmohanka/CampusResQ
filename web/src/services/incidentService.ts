@@ -16,6 +16,36 @@ import { getEffectiveSeverity, parseAiAnalysis } from '../utils/aiAnalysis';
 let localIncidents: Incident[] = [...INITIAL_INCIDENTS];
 const incidentListeners: Set<(incidents: Incident[]) => void> = new Set();
 
+function parseTimestampField(val: any): string {
+  if (!val) return new Date().toISOString();
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  }
+  if (typeof val === 'string') {
+    const num = Number(val);
+    if (!isNaN(num) && val.length >= 12 && !val.includes('-')) {
+      const d = new Date(num);
+      return isNaN(d.getTime()) ? val : d.toISOString();
+    }
+    return val;
+  }
+  if (val && typeof val.toDate === 'function') {
+    const d = val.toDate();
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  }
+  if (val && typeof val.seconds === 'number') {
+    const d = new Date(val.seconds * 1000);
+    return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  }
+  return new Date().toISOString();
+}
+
+function parseOptionalTimestamp(val: any): string | undefined {
+  if (!val) return undefined;
+  return parseTimestampField(val);
+}
+
 export function calculateIncidentStats(incidents: Incident[]): IncidentStats {
   let pending = 0;
   let active = 0;
@@ -70,7 +100,7 @@ export function subscribeToIncidents(
               severity: data.severity,
               adminSeverity: data.adminSeverity || null,
               adminSeverityChangedBy: data.adminSeverityChangedBy || null,
-              adminSeverityChangedAt: data.adminSeverityChangedAt?.toDate ? data.adminSeverityChangedAt.toDate().toISOString() : data.adminSeverityChangedAt,
+              adminSeverityChangedAt: parseOptionalTimestamp(data.adminSeverityChangedAt),
               status: data.status || 'pending',
               location: data.location || 'Main Campus',
               reporterId: data.reporterId || '',
@@ -86,11 +116,11 @@ export function subscribeToIncidents(
               assignedToPhone: data.assignedToPhone || null,
               resolutionNotes: data.resolutionNotes,
               images: data.images || [],
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
-              assignedAt: data.assignedAt?.toDate ? data.assignedAt.toDate().toISOString() : data.assignedAt,
-              inProgressAt: data.inProgressAt?.toDate ? data.inProgressAt.toDate().toISOString() : data.inProgressAt,
-              resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
-              updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
+              createdAt: parseTimestampField(data.createdAt),
+              assignedAt: parseOptionalTimestamp(data.assignedAt),
+              inProgressAt: parseOptionalTimestamp(data.inProgressAt),
+              resolvedAt: parseOptionalTimestamp(data.resolvedAt),
+              updatedAt: parseOptionalTimestamp(data.updatedAt) || new Date().toISOString(),
             };
           });
 
@@ -137,7 +167,7 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
           severity: data.severity,
           adminSeverity: data.adminSeverity || null,
           adminSeverityChangedBy: data.adminSeverityChangedBy || null,
-          adminSeverityChangedAt: data.adminSeverityChangedAt?.toDate ? data.adminSeverityChangedAt.toDate().toISOString() : data.adminSeverityChangedAt,
+          adminSeverityChangedAt: parseOptionalTimestamp(data.adminSeverityChangedAt),
           status: data.status || 'pending',
           location: data.location || 'Main Campus',
           reporterId: data.reporterId || '',
@@ -153,11 +183,11 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
           assignedToPhone: data.assignedToPhone || null,
           resolutionNotes: data.resolutionNotes,
           images: data.images || [],
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
-          assignedAt: data.assignedAt?.toDate ? data.assignedAt.toDate().toISOString() : data.assignedAt,
-          inProgressAt: data.inProgressAt?.toDate ? data.inProgressAt.toDate().toISOString() : data.inProgressAt,
-          resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
+          createdAt: parseTimestampField(data.createdAt),
+          assignedAt: parseOptionalTimestamp(data.assignedAt),
+          inProgressAt: parseOptionalTimestamp(data.inProgressAt),
+          resolvedAt: parseOptionalTimestamp(data.resolvedAt),
+          updatedAt: parseOptionalTimestamp(data.updatedAt) || new Date().toISOString(),
         };
       }
     } catch (err) {
@@ -218,24 +248,31 @@ export async function updateIncidentAdminSeverity(
   notifyListeners();
 }
 
+/**
+ * Assign an approved responder to an incident:
+ * Stamped in Firestore with:
+ * - assignedTo: <RESPONDER FIREBASE AUTH UID>
+ * - assignedToName: <RESPONDER NAME>
+ * - status: 'accepted'
+ */
 export async function assignMentorToIncident(
   incidentId: string,
-  mentorIdOrObj: any,
-  mentorName?: string,
-  mentorEmail?: string,
+  responderIdOrObj: any,
+  responderName?: string,
+  responderEmail?: string,
   _adminId?: string,
   _adminName?: string
 ): Promise<void> {
-  const mId = typeof mentorIdOrObj === 'object' ? mentorIdOrObj.id : mentorIdOrObj;
-  const mName = typeof mentorIdOrObj === 'object' ? mentorIdOrObj.name : mentorName;
-  const mEmail = typeof mentorIdOrObj === 'object' ? mentorIdOrObj.email : mentorEmail;
+  const rId = typeof responderIdOrObj === 'object' ? responderIdOrObj.id : responderIdOrObj;
+  const rName = typeof responderIdOrObj === 'object' ? responderIdOrObj.name : responderName;
+  const rEmail = typeof responderIdOrObj === 'object' ? responderIdOrObj.email : responderEmail;
 
   if (isFirebaseConfigured && db) {
     const docRef = doc(db, 'incidents', incidentId);
     await updateDoc(docRef, {
-      assignedTo: mId,
-      assignedToName: mName,
-      assignedToEmail: mEmail,
+      assignedTo: rId,
+      assignedToName: rName,
+      assignedToEmail: rEmail,
       status: 'accepted',
       assignedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -247,9 +284,9 @@ export async function assignMentorToIncident(
     inc.id === incidentId
       ? {
           ...inc,
-          assignedTo: mId,
-          assignedToName: mName,
-          assignedToEmail: mEmail,
+          assignedTo: rId,
+          assignedToName: rName,
+          assignedToEmail: rEmail,
           status: 'accepted',
           assignedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),

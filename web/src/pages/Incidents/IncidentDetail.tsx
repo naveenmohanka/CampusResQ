@@ -5,6 +5,7 @@ import { Incident } from '../../types/incident';
 import { AiSeverityBadge, StatusBadge, CategoryBadge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { IncidentMap } from '../../components/common/IncidentMap';
+import { AssignMentorModal } from '../../components/incidents/AssignMentorModal';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotification } from '../../context/NotificationContext';
 import {
@@ -45,19 +46,21 @@ export const IncidentDetail: React.FC = () => {
   const [updatingSeverity, setUpdatingSeverity] = useState(false);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
 
-  // Resolution Modal State
+  // Modals State
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [resolutionNotes, setResolutionNotes] = useState('');
 
+  const loadIncident = async () => {
+    if (!id) return;
+    setLoading(true);
+    const data = await getIncidentById(id);
+    setIncident(data);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    async function loadIncident() {
-      if (!id) return;
-      setLoading(true);
-      const data = await getIncidentById(id);
-      setIncident(data);
-      setLoading(false);
-    }
     loadIncident();
   }, [id]);
 
@@ -361,7 +364,7 @@ export const IncidentDetail: React.FC = () => {
             ) : (
               <div className="py-4 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-subtle)] rounded-xl border border-[var(--border-color)]">
                 <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto mb-1" />
-                <span>AI analysis unavailable for this record.</span>
+                <span>AI analysis processing or status: {incident.aiAnalysisStatus || 'standard'}.</span>
               </div>
             )}
           </div>
@@ -370,7 +373,7 @@ export const IncidentDetail: React.FC = () => {
           <div className="clean-card p-5 rounded-2xl space-y-3">
             <h3 className="font-bold text-[var(--text-primary)] text-sm">Full Situation Report</h3>
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
-              {incident.description}
+              {incident.description || 'No description provided.'}
             </p>
           </div>
 
@@ -446,6 +449,65 @@ export const IncidentDetail: React.FC = () => {
             </div>
           </div>
 
+          {/* Assigned Response Team Member */}
+          <div className="clean-card p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                Response Team Assignment
+              </h3>
+              {!isResolved && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAssignModalOpen(true)}
+                  className="text-xs py-1 px-2.5"
+                >
+                  {incident.assignedTo ? 'Reassign' : 'Assign'}
+                </Button>
+              )}
+            </div>
+
+            {incident.assignedToName ? (
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-muted)]">Assigned Responder:</span>
+                  <span className="font-bold text-violet-700 dark:text-violet-300">{incident.assignedToName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[var(--text-muted)]">Responder UID:</span>
+                  <span className="font-mono text-[11px] text-[var(--text-secondary)] truncate max-w-[150px]">{incident.assignedTo}</span>
+                </div>
+                {incident.assignedToEmail && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--text-muted)]">Email:</span>
+                    <span className="font-mono text-[var(--text-secondary)]">{incident.assignedToEmail}</span>
+                  </div>
+                )}
+                {incident.assignedAt && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[var(--text-muted)]">Assigned At:</span>
+                    <span className="font-mono text-[var(--text-muted)]">{formatTimeAgo(incident.assignedAt)}</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-3 text-center rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] text-xs text-amber-600 dark:text-amber-400 flex flex-col items-center gap-1.5">
+                <span>Awaiting Response Team Assignment</span>
+                {!isResolved && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsAssignModalOpen(true)}
+                    className="text-xs py-1 px-3"
+                  >
+                    Assign Approved Responder
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Reporter Information */}
           <div className="clean-card p-5 rounded-2xl space-y-3">
             <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
@@ -467,7 +529,7 @@ export const IncidentDetail: React.FC = () => {
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-[var(--text-muted)]">Name:</span>
-                  <span className="font-semibold text-[var(--text-primary)]">{incident.reporterName || 'Student Reporter'}</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{incident.reporterName || 'Student / Campus Reporter'}</span>
                 </div>
                 {incident.reporterEmail && (
                   <div className="flex items-center justify-between">
@@ -483,41 +545,8 @@ export const IncidentDetail: React.FC = () => {
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-[var(--text-muted)]">Reporter ID:</span>
-                  <span className="font-mono text-[var(--text-muted)]">{incident.reporterId || 'N/A'}</span>
+                  <span className="font-mono text-[var(--text-muted)] truncate max-w-[150px]">{incident.reporterId || 'N/A'}</span>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Assigned Response Team Member */}
-          <div className="clean-card p-5 rounded-2xl space-y-3">
-            <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-              Response Team Assignment
-            </h3>
-
-            {incident.assignedToName ? (
-              <div className="space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-muted)]">Assigned To:</span>
-                  <span className="font-bold text-violet-700 dark:text-violet-300">{incident.assignedToName}</span>
-                </div>
-                {incident.assignedToEmail && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--text-muted)]">Email:</span>
-                    <span className="font-mono text-[var(--text-secondary)]">{incident.assignedToEmail}</span>
-                  </div>
-                )}
-                {incident.assignedAt && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[var(--text-muted)]">Assigned At:</span>
-                    <span className="font-mono text-[var(--text-muted)]">{formatTimeAgo(incident.assignedAt)}</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="py-3 text-center rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] text-xs text-amber-600 dark:text-amber-400">
-                Awaiting Response Team Pickup
               </div>
             )}
           </div>
@@ -556,6 +585,16 @@ export const IncidentDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Assign Responder Modal */}
+      <AssignMentorModal
+        incident={incident}
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        onSuccess={() => {
+          loadIncident();
+        }}
+      />
 
       {/* Resolve Incident Confirmation Modal */}
       {isResolveModalOpen && (
