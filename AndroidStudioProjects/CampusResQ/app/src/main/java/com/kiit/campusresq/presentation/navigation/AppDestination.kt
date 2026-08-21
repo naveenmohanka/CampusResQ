@@ -4,7 +4,13 @@ sealed class AppDestination(val route: String) {
 
     data object Login : AppDestination("login")
 
-    data object StudentHome : AppDestination("student_home")
+    data object ChooseRole : AppDestination("choose_role")
 
-    data object MentorHome : AppDestination("mentor_home")
+    data object ReporterHome : AppDestination("reporter_home")
+
+    data object ResponderHome : AppDestination("responder_home")
+
+    data object ReportIncident : AppDestination("report_incident")
+
+    data object MyReports : AppDestination("my_reports")
 }

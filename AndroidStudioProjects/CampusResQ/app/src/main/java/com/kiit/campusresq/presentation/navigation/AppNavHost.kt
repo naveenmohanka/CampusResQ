@@ -6,7 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.kiit.campusresq.presentation.auth.LoginScreen
+import com.kiit.campusresq.presentation.role.ChooseRoleScreen
 import com.kiit.campusresq.presentation.mentor.MentorHomeScreen
+import com.kiit.campusresq.presentation.report.MyReportsScreen
+import com.kiit.campusresq.presentation.report.ReportIncidentScreen
 import com.kiit.campusresq.presentation.student.StudentHomeScreen
 
 @Composable
@@ -20,21 +23,63 @@ fun AppNavHost(
         modifier = modifier
     ) {
 
+        // Login
         composable(AppDestination.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
                     navController.navigate(
-                        AppDestination.StudentHome.route
+                        AppDestination.ChooseRole.route
                     )
                 }
             )
         }
 
-        composable(AppDestination.StudentHome.route) {
-            StudentHomeScreen()
+      // ReportIncident
+        composable(AppDestination.ReportIncident.route) {
+            ReportIncidentScreen(
+                onSubmit = {
+                    navController.popBackStack()
+                }
+            )
+        }
+        // First-time role selection
+        composable(AppDestination.ChooseRole.route) {
+            ChooseRoleScreen(
+                onReporterSelected = {
+                    navController.navigate(
+                        AppDestination.ReporterHome.route
+                    )
+                },
+                onResponderSelected = {
+                    navController.navigate(
+                        AppDestination.ResponderHome.route
+                    )
+                }
+            )
         }
 
-        composable(AppDestination.MentorHome.route) {
+        // Reporter / Campus Community
+        composable(AppDestination.ReporterHome.route) {
+            StudentHomeScreen(
+                onReportIncident = {
+                    navController.navigate(
+                        AppDestination.ReportIncident.route
+                    )
+                },
+                onMyReports = {
+                    navController.navigate(
+                        AppDestination.MyReports.route
+                    )
+                }
+            )
+        }
+
+        composable(AppDestination.MyReports.route) {
+            MyReportsScreen()
+        }
+
+        // Responder / Response Team
+        composable(AppDestination.ResponderHome.route) {
             MentorHomeScreen()
         }
     }
