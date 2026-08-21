@@ -21,18 +21,7 @@ fun AppNavHost(
     ) {
 
         composable(AppDestination.Login.route) {
-            LoginScreen(
-                onStudentLogin = {
-                    navController.navigate(
-                        AppDestination.StudentHome.route
-                    )
-                },
-                onMentorLogin = {
-                    navController.navigate(
-                        AppDestination.MentorHome.route
-                    )
-                }
-            )
+            LoginScreen()
         }
 
         composable(AppDestination.StudentHome.route) {
