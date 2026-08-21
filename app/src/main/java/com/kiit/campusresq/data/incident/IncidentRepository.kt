@@ -100,16 +100,80 @@ class IncidentRepository(
         }
     }
 
+    fun getAssignedIncidents(): Flow<List<Incident>> = callbackFlow {
+
+        val user = auth.currentUser
+
+        if (user == null) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+
+        val listenerRegistration = firestore
+            .collection("incidents")
+            .whereEqualTo("assignedTo", user.uid)
+            .addSnapshotListener { snapshot, error ->
+
+                if (error != null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val incidents = snapshot?.documents
+                    ?.map(Incident::fromDocument)
+                    ?: emptyList()
+
+                trySend(incidents)
+            }
+
+        awaitClose {
+            listenerRegistration.remove()
+        }
+    }
+
     suspend fun updateIncidentStatus(
         incidentId: String,
         status: String
     ): Result<Unit> {
         return try {
-            firestore
+
+            val user = auth.currentUser
+                ?: return Result.failure(
+                    Exception("User not logged in")
+                )
+
+            val incidentReference = firestore
                 .collection("incidents")
                 .document(incidentId)
-                .update("status", status)
-                .await()
+
+            if (status == "accepted") {
+
+                incidentReference
+                    .update(
+                        mapOf(
+                            "status" to "accepted",
+                            "assignedTo" to user.uid,
+                            "assignedToName" to (
+                                    user.displayName
+                                        ?: user.email
+                                        ?: "Response Team"
+                                    ),
+                            "assignedAt" to
+                                    System.currentTimeMillis()
+                        )
+                    )
+                    .await()
+
+            } else {
+
+                incidentReference
+                    .update(
+                        "status",
+                        status
+                    )
+                    .await()
+            }
 
             Result.success(Unit)
 

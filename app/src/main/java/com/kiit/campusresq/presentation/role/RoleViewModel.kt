@@ -13,9 +13,7 @@ sealed interface RoleState {
 
     data object Loading : RoleState
 
-    data class ReporterSuccess(
-        val role: String = "reporter"
-    ) : RoleState
+    data object ReporterSuccess : RoleState
 
     data object ResponderPending : RoleState
 
@@ -34,9 +32,7 @@ class RoleViewModel(
 ) : ViewModel() {
 
     private val _roleState =
-        MutableStateFlow<RoleState>(
-            RoleState.Idle
-        )
+        MutableStateFlow<RoleState>(RoleState.Idle)
 
     val roleState =
         _roleState.asStateFlow()
@@ -44,14 +40,13 @@ class RoleViewModel(
     fun selectReporter() {
         viewModelScope.launch {
 
-            _roleState.value =
-                RoleState.Loading
+            _roleState.value = RoleState.Loading
 
             repository
-                .saveUserRole("reporter")
+                .saveReporterRole()
                 .onSuccess {
                     _roleState.value =
-                        RoleState.ReporterSuccess()
+                        RoleState.ReporterSuccess
                 }
                 .onFailure { exception ->
                     _roleState.value =
@@ -66,8 +61,7 @@ class RoleViewModel(
     fun requestResponderAccess() {
         viewModelScope.launch {
 
-            _roleState.value =
-                RoleState.Loading
+            _roleState.value = RoleState.Loading
 
             repository
                 .requestResponderAccess()
@@ -92,6 +86,43 @@ class RoleViewModel(
                         RoleState.Error(
                             exception.message
                                 ?: "Failed to request access"
+                        )
+                }
+        }
+    }
+
+    fun checkResponderStatus() {
+        viewModelScope.launch {
+
+            _roleState.value = RoleState.Loading
+
+            repository
+                .getUserRoleInfo()
+                .onSuccess { userInfo ->
+
+                    _roleState.value =
+                        when {
+
+                            userInfo.role == "responder" &&
+                                    userInfo.responderApprovalStatus == "approved" ->
+                                RoleState.ResponderApproved
+
+                            userInfo.responderApprovalStatus == "pending" ->
+                                RoleState.ResponderPending
+
+                            userInfo.responderApprovalStatus == "rejected" ->
+                                RoleState.ResponderRejected
+
+                            else ->
+                                RoleState.Idle
+                        }
+                }
+                .onFailure { exception ->
+
+                    _roleState.value =
+                        RoleState.Error(
+                            exception.message
+                                ?: "Failed to check access status"
                         )
                 }
         }

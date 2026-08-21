@@ -337,6 +337,19 @@ private fun IncidentCard(
                     status = status
                 )
             }
+            if (incident.assignedToName.isNotBlank()) {
+
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+
+                Text(
+                    text = "Assigned to: ${incident.assignedToName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
 
             Spacer(
                 modifier = Modifier.height(12.dp)
