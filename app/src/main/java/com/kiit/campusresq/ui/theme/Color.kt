@@ -2,10 +2,26 @@ package com.kiit.campusresq.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Primary brand colors
+val PrimaryBlue = Color(0xFF1D4ED8)
+val PrimaryBlueDark = Color(0xFF1E3A8A)
+val PrimaryBlueLight = Color(0xFFE8F0FF)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Background & surfaces
+val AppBackground = Color(0xFFF6F8FC)
+val SurfaceWhite = Color(0xFFFFFFFF)
+val SurfaceVariant = Color(0xFFF1F5F9)
+
+// Text
+val TextPrimary = Color(0xFF172033)
+val TextSecondary = Color(0xFF64748B)
+
+// Status colors
+val StatusPending = Color(0xFFF59E0B)
+val StatusAccepted = Color(0xFF2563EB)
+val StatusInProgress = Color(0xFF7C3AED)
+val StatusResolved = Color(0xFF16A34A)
+
+// Additional
+val ErrorRed = Color(0xFFDC2626)
+val BorderColor = Color(0xFFE2E8F0)

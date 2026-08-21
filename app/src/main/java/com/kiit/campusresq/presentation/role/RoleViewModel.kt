@@ -8,12 +8,20 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 sealed interface RoleState {
+
     data object Idle : RoleState
+
     data object Loading : RoleState
 
-    data class Success(
-        val role: String
+    data class ReporterSuccess(
+        val role: String = "reporter"
     ) : RoleState
+
+    data object ResponderPending : RoleState
+
+    data object ResponderApproved : RoleState
+
+    data object ResponderRejected : RoleState
 
     data class Error(
         val message: String
@@ -21,24 +29,70 @@ sealed interface RoleState {
 }
 
 class RoleViewModel(
-    private val repository: UserRepository = UserRepository()
+    private val repository: UserRepository =
+        UserRepository()
 ) : ViewModel() {
 
-    private val _roleState = MutableStateFlow<RoleState>(RoleState.Idle)
-    val roleState = _roleState.asStateFlow()
+    private val _roleState =
+        MutableStateFlow<RoleState>(
+            RoleState.Idle
+        )
 
-    fun selectRole(role: String) {
+    val roleState =
+        _roleState.asStateFlow()
+
+    fun selectReporter() {
         viewModelScope.launch {
-            _roleState.value = RoleState.Loading
 
-            repository.saveUserRole(role)
+            _roleState.value =
+                RoleState.Loading
+
+            repository
+                .saveUserRole("reporter")
                 .onSuccess {
-                    _roleState.value = RoleState.Success(role)
+                    _roleState.value =
+                        RoleState.ReporterSuccess()
                 }
                 .onFailure { exception ->
-                    _roleState.value = RoleState.Error(
-                        exception.message ?: "Failed to save role"
-                    )
+                    _roleState.value =
+                        RoleState.Error(
+                            exception.message
+                                ?: "Failed to save role"
+                        )
+                }
+        }
+    }
+
+    fun requestResponderAccess() {
+        viewModelScope.launch {
+
+            _roleState.value =
+                RoleState.Loading
+
+            repository
+                .requestResponderAccess()
+                .onSuccess { status ->
+
+                    _roleState.value =
+                        when (status) {
+
+                            "approved" ->
+                                RoleState.ResponderApproved
+
+                            "rejected" ->
+                                RoleState.ResponderRejected
+
+                            else ->
+                                RoleState.ResponderPending
+                        }
+                }
+                .onFailure { exception ->
+
+                    _roleState.value =
+                        RoleState.Error(
+                            exception.message
+                                ?: "Failed to request access"
+                        )
                 }
         }
     }

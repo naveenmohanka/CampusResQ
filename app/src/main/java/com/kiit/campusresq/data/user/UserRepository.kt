@@ -5,8 +5,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
 class UserRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firestore: FirebaseFirestore =
+        FirebaseFirestore.getInstance(),
+
+    private val auth: FirebaseAuth =
+        FirebaseAuth.getInstance()
 ) {
 
     suspend fun getUserRole(): Result<String?> {
@@ -22,16 +25,19 @@ class UserRepository(
                 .get()
                 .await()
 
-            val role = document.getString("role")
-
-            Result.success(role)
+            Result.success(
+                document.getString("role")
+            )
 
         } catch (exception: Exception) {
             Result.failure(exception)
         }
     }
 
-    suspend fun saveUserRole(role: String): Result<Unit> {
+    // Reporter gets direct access
+    suspend fun saveUserRole(
+        role: String
+    ): Result<Unit> {
         return try {
             val user = auth.currentUser
                 ?: return Result.failure(
@@ -52,6 +58,51 @@ class UserRepository(
                 .await()
 
             Result.success(Unit)
+
+        } catch (exception: Exception) {
+            Result.failure(exception)
+        }
+    }
+
+    // Creates request only if one does not already exist
+    suspend fun requestResponderAccess(): Result<String> {
+        return try {
+            val user = auth.currentUser
+                ?: return Result.failure(
+                    Exception("User is not logged in")
+                )
+
+            val requestReference = firestore
+                .collection("responder_requests")
+                .document(user.uid)
+
+            val existingRequest = requestReference
+                .get()
+                .await()
+
+            if (existingRequest.exists()) {
+
+                val status =
+                    existingRequest.getString("status")
+                        ?: "pending"
+
+                return Result.success(status)
+            }
+
+            val requestData = hashMapOf(
+                "uid" to user.uid,
+                "name" to (user.displayName ?: ""),
+                "email" to (user.email ?: ""),
+                "status" to "pending",
+                "requestedAt" to
+                        System.currentTimeMillis()
+            )
+
+            requestReference
+                .set(requestData)
+                .await()
+
+            Result.success("pending")
 
         } catch (exception: Exception) {
             Result.failure(exception)
