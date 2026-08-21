@@ -22,6 +22,7 @@ class AuthViewModel(
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
+
     val authState = _authState.asStateFlow()
 
     fun signInWithGoogle(idToken: String) {

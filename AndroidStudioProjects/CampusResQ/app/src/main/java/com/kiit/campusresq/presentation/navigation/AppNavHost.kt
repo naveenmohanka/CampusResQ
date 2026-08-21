@@ -21,7 +21,13 @@ fun AppNavHost(
     ) {
 
         composable(AppDestination.Login.route) {
-            LoginScreen()
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(
+                        AppDestination.StudentHome.route
+                    )
+                }
+            )
         }
 
         composable(AppDestination.StudentHome.route) {
