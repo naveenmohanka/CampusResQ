@@ -4,12 +4,14 @@ import {
   LayoutDashboard,
   AlertTriangle,
   BarChart3,
+  Users,
   Shield,
   Sun,
   Moon,
   X
 } from 'lucide-react';
 import { useIncidents } from '../../hooks/useIncidents';
+import { useUsers } from '../../hooks/useUsers';
 import { useTheme } from '../../hooks/useTheme';
 
 interface SidebarProps {
@@ -19,7 +21,12 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { stats } = useIncidents();
+  const { users } = useUsers();
   const { theme, setTheme } = useTheme();
+
+  const pendingResponderRequests = users.filter(
+    (u) => u.responderApprovalStatus === 'pending'
+  ).length;
 
   const navigation = [
     {
@@ -38,6 +45,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       name: 'Analytics',
       href: '/analytics',
       icon: BarChart3,
+    },
+    {
+      name: 'Users',
+      href: '/users',
+      icon: Users,
+      badge: pendingResponderRequests > 0 ? pendingResponderRequests : undefined,
+      badgeVariant: 'warning',
     },
   ];
 
@@ -129,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </NavLink>
           ))}
 
-          {/* Theme Toggle - Directly below Analytics */}
+          {/* Theme Toggle - Directly below navigation tabs */}
           <div className="pt-3 mt-3 border-t border-[var(--border-color)]">
             <div className="px-1 mb-1.5 flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
