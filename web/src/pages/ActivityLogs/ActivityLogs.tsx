@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Search, Download } from 'lucide-react';
+import { Search, Shield } from 'lucide-react';
 import { useActivityLogs } from '../../hooks/useActivityLogs';
 import { ActivityAction, ActivityFilters } from '../../types/activity';
 import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
 import { TableSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Button } from '../../components/common/Button';
 
 export const ActivityLogsPage: React.FC = () => {
   const [filters, setFilters] = useState<ActivityFilters>({
@@ -22,30 +21,8 @@ export const ActivityLogsPage: React.FC = () => {
     { id: 'STATUS_CHANGED', label: 'Status Changed' },
     { id: 'SEVERITY_UPDATED', label: 'Severity Updated' },
     { id: 'INCIDENT_RESOLVED', label: 'Incident Resolved' },
-    { id: 'USER_ROLE_CHANGED', label: 'Role Changed' },
+    { id: 'SYSTEM_ALERT', label: 'System Broadcast' },
   ];
-
-  const exportAudit = () => {
-    if (logs.length === 0) return;
-    const headers = ['Log ID', 'Action', 'Incident ID', 'Actor', 'Role', 'Details', 'Timestamp'];
-    const rows = logs.map(l => [
-      l.id,
-      l.action,
-      l.incidentId || 'N/A',
-      `"${l.performedByName}"`,
-      l.performedByRole,
-      `"${l.details.replace(/"/g, '""')}"`,
-      l.timestamp
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `campusresq-audit-trail-${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="space-y-6">
@@ -59,19 +36,14 @@ export const ActivityLogsPage: React.FC = () => {
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Immutable chronological audit log of all incident updates, assignments, and access changes.
+            Immutable chronological audit trail of all emergency dispatches, status transitions, and broadcast events.
           </p>
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={exportAudit}
-          icon={<Download className="w-4 h-4" />}
-          disabled={logs.length === 0}
-        >
-          Export Audit Trail
-        </Button>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
+          <Shield className="w-4 h-4 text-teal-400" />
+          <span>Immutable Audit Record</span>
+        </div>
       </div>
 
       {/* Filters Bar */}
@@ -130,7 +102,7 @@ export const ActivityLogsPage: React.FC = () => {
                 <tr className="border-b border-slate-800 bg-slate-900/80 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   <th className="py-4 px-6">Action Type</th>
                   <th className="py-4 px-4">Event Details</th>
-                  <th className="py-4 px-4">Performed By</th>
+                  <th className="py-4 px-4">Actor</th>
                   <th className="py-4 px-4">Incident Ref</th>
                   <th className="py-4 px-6 text-right">Timestamp</th>
                 </tr>

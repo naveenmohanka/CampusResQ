@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useIntelligence } from '../../hooks/useIntelligence';
 import { Clock, ShieldCheck, Flame, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,7 +14,7 @@ export const ResponseTimeWidget: React.FC = () => {
             <Zap className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-bold text-white text-sm">Response Time & SLA Telemetry</h3>
+            <h3 className="font-bold text-white text-sm">Response Time & Safety Intelligence</h3>
             <p className="text-[11px] text-slate-400">Campus Safety Intelligence (Module 3)</p>
           </div>
         </div>
@@ -35,7 +35,7 @@ export const ResponseTimeWidget: React.FC = () => {
           <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
             <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
               <Clock className="w-3 h-3 text-teal-400" />
-              Avg Dispatch Time
+              Avg Response Time
             </span>
             <div className="mt-2 flex items-baseline gap-1">
               <span className="text-xl font-extrabold text-white font-mono">
@@ -58,21 +58,21 @@ export const ResponseTimeWidget: React.FC = () => {
               </span>
               <span className="text-xs text-slate-400 font-semibold">min</span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">50th percentile acknowledgement</p>
+            <p className="text-[10px] text-slate-500 mt-1">50th percentile dispatch speed</p>
           </div>
 
           {/* SLA Compliance */}
           <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
             <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
               <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              SLA Compliance
+              Target SLA (≤15m)
             </span>
             <div className="mt-2 flex items-baseline gap-1">
               <span className="text-xl font-extrabold text-emerald-400 font-mono">
                 {intelligence.slaComplianceRate}%
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1">Under 15-min response target</p>
+            <p className="text-[10px] text-slate-500 mt-1">CampusResQ target compliance</p>
           </div>
 
           {/* Top Repeated Hotspot */}
