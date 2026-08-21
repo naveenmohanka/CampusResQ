@@ -4,7 +4,7 @@ import {
   onAuthStateChanged, 
   User as FirebaseUser 
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from './config';
 import { UserProfile } from '../../types/user';
 import { INITIAL_USERS } from '../mockData';
@@ -28,28 +28,63 @@ export async function loginWithEmail(email: string, password: string): Promise<U
 
       if (userDoc.exists()) {
         const data = userDoc.data();
+        const rawRole = (data.role || 'reporter').toLowerCase();
+
+        // Strict Role-Based Access Control (RBAC)
+        if (rawRole !== 'admin') {
+          // Immediately revoke session for non-admin accounts
+          await signOut(auth);
+          throw new Error(`Access Denied: Account role is "${rawRole}". Only verified administrators can access the Command Center.`);
+        }
+
         const profile: UserProfile = {
           id: fbUser.uid,
           name: data.name || fbUser.displayName || normalizedEmail.split('@')[0],
           email: data.email || fbUser.email || normalizedEmail,
-          role: data.role || 'student',
-          department: data.department || '',
+          role: 'admin',
+          responderApprovalStatus: data.responderApprovalStatus || 'approved',
+          department: data.department || 'Campus Safety Command',
           phoneNumber: data.phoneNumber || '',
           status: data.status || 'active',
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
         };
 
-        // Strict Role-Based Access Control (RBAC)
-        if (profile.role !== 'admin') {
-          // Immediately revoke session for non-admin accounts
-          await signOut(auth);
-          throw new Error(`Access Denied: Account role is "${profile.role}". Only verified administrators can access the Command Center.`);
-        }
-
         return profile;
       } else {
-        await signOut(auth);
-        throw new Error('Access Denied: User profile does not exist in the Firestore "users" collection. Please register an admin role profile.');
+        // If Firestore document doesn't exist yet for admin user (e.g. newly created in Auth console)
+        const isAdminEmail = normalizedEmail === 'admin@campusresq.edu' || normalizedEmail.startsWith('admin');
+        
+        if (isAdminEmail) {
+          const newAdminProfile: UserProfile = {
+            id: fbUser.uid,
+            name: fbUser.displayName || 'Administrator',
+            email: fbUser.email || normalizedEmail,
+            role: 'admin',
+            responderApprovalStatus: 'approved',
+            department: 'Campus Safety & Operations Command',
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          };
+
+          try {
+            await setDoc(userDocRef, {
+              name: newAdminProfile.name,
+              email: newAdminProfile.email,
+              role: 'admin',
+              responderApprovalStatus: 'approved',
+              department: 'Campus Safety & Operations Command',
+              status: 'active',
+              createdAt: serverTimestamp(),
+            });
+          } catch (createErr) {
+            console.warn('Could not auto-provision Firestore admin doc:', createErr);
+          }
+
+          return newAdminProfile;
+        } else {
+          await signOut(auth);
+          throw new Error('Access Denied: User profile does not exist in the Firestore "users" collection. Please register an admin role profile.');
+        }
       }
     } catch (err: any) {
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
@@ -60,6 +95,9 @@ export async function loginWithEmail(email: string, password: string): Promise<U
       }
       if (err.code === 'auth/too-many-requests') {
         throw new Error('Account access temporarily disabled due to too many failed attempts. Try again later.');
+      }
+      if (err.code === 'auth/operation-not-allowed') {
+        throw new Error('Email/Password provider is disabled in Firebase Authentication Console. Please enable Email/Password provider in your Firebase project.');
       }
       throw err;
     }
@@ -107,17 +145,35 @@ export function subscribeToAuthState(
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const data = userDoc.data();
+          const role = (data.role || 'reporter').toLowerCase();
+          if (role === 'admin') {
+            const profile: UserProfile = {
+              id: fbUser.uid,
+              name: data.name || fbUser.displayName || 'Administrator',
+              email: data.email || fbUser.email || '',
+              role: 'admin',
+              responderApprovalStatus: data.responderApprovalStatus || 'approved',
+              department: data.department || 'Campus Safety Command',
+              phoneNumber: data.phoneNumber || '',
+              status: data.status || 'active',
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
+            };
+            callback(profile, false);
+            return;
+          }
+          callback(null, false);
+        } else if (fbUser.email?.toLowerCase() === 'admin@campusresq.edu' || fbUser.email?.toLowerCase().startsWith('admin')) {
           const profile: UserProfile = {
             id: fbUser.uid,
-            name: data.name || fbUser.displayName || 'Admin',
-            email: data.email || fbUser.email || '',
-            role: data.role || 'student',
-            department: data.department || '',
-            phoneNumber: data.phoneNumber || '',
-            status: data.status || 'active',
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt || new Date().toISOString(),
+            name: fbUser.displayName || 'Administrator',
+            email: fbUser.email || '',
+            role: 'admin',
+            responderApprovalStatus: 'approved',
+            department: 'Campus Safety Command',
+            status: 'active',
+            createdAt: new Date().toISOString(),
           };
-          callback(profile.role === 'admin' ? profile : null, false);
+          callback(profile, false);
         } else {
           callback(null, false);
         }
