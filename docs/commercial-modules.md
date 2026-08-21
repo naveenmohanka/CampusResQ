@@ -1,24 +1,23 @@
 # CampusResQ — Commercial Startup Modules Specification
 
-This document defines the **Three Separable Commercial Product Modules** (plus one confidential safety module) built into the CampusResQ platform. Each module is architected with clean service, component, and data boundaries so that it can be sold, acquired, or licensed independently in the university and enterprise safety marketplace.
+This document defines the **Three Separable Commercial Product Modules** (plus one Whistleblower Shield Module) built into the CampusResQ platform. Each module is architected with clean service, component, and data boundaries so that it can be sold, acquired, or licensed independently in the university and enterprise safety marketplace.
 
 ---
 
 ## Architecture of Separable Modules
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        CampusResQ Platform                             │
-├─────────────────────────┬──────────────────────────┬───────────────────┤
-│        MODULE 1         │         MODULE 2         │     MODULE 3      │
-│     Campus Emergency    │   Campus Safety Alert    │   Campus Safety   │
-│         Response        │         Network          │   Intelligence    │
-├─────────────────────────┼──────────────────────────┼───────────────────┤
-│ • Reporting & Location  │ • Broadcast Advisories   │ • Hotspot Engine  │
-│ • Severity Priority     │ • Geofenced Zones        │ • SLA Latency     │
-│ • Mentor Dispatch       │ • High-Threat Lockdowns  │ • Volume Trends   │
-│ • Resolution Tracking   │ • Multi-Channel Delivery │ • SLA Compliance  │
-└─────────────────────────┴──────────────────────────┴───────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               CampusResQ Platform                                      │
+├──────────────────────────┬──────────────────────────┬──────────────────────────────────┤
+│         MODULE 1         │         MODULE 2         │             MODULE 3             │
+│ Campus Emergency Response│Campus Safety Alert Net.  │ Campus Safety Intelligence & SLA │
+├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
+│ • Multimodal SOS Intake  │ • Emergency Broadcasts   │ • Repeated Hotspot Detection     │
+│ • Geolocation & Blueprint│ • Threat Levels & Zones  │ • Average Response Time SLA      │
+│ • Priority Dispatch      │ • Active Alert Widget    │ • 7-Day Volume & Resolution      │
+│ • Resolution Tracking    │ • Push Delivery Schema   │ • Target SLA Compliance (<=15m)  │
+└──────────────────────────┴──────────────────────────┴──────────────────────────────────┘
 ```
 
 ---
@@ -30,13 +29,13 @@ This document defines the **Three Separable Commercial Product Modules** (plus o
 - **Target Customer**: University Security Operations, Campus Health Centers, Facility & Maintenance Departments, Corporate Campuses.
 
 ### 2. Core Capabilities & Features
-- Multimodal emergency reporting (Category: Medical, Fire, Security, Facility, Ragging, Harassment).
-- Exact GPS coordinate capture with blueprint campus location visualizer.
+- Multimodal emergency reporting (Medical, Fire, Security, Facility, Ragging, Harassment).
+- Exact GPS coordinate capture with campus location blueprint visualizer.
 - Photographic and media evidence attachments stored under access-controlled Firebase Storage.
 - Threat severity classification (`critical`, `high`, `medium`, `low`).
 - Faculty mentor / quick-response security lead dispatch and reassignment.
 - Live operational status transitions (`reported` &rarr; `assigned` &rarr; `in_progress` &rarr; `resolved`).
-- Resolution notes recording and audit trail logging.
+- Resolution notes recording and immutable threat level locking upon resolution.
 
 ### 3. Firebase Dependencies & Collections
 - **Firestore Collections**: `incidents/{incidentId}`, `users/{userId}`
@@ -83,15 +82,15 @@ This document defines the **Three Separable Commercial Product Modules** (plus o
 ## Module 3: Campus Safety Intelligence & SLA Analytics
 
 ### 1. Purpose & Target Customer
-- **Purpose**: Algorithmic safety intelligence engine that aggregates historical incident data to identify repeated danger hotspots, monitor dispatch latencies, and measure security SLA compliance.
+- **Purpose**: Safety intelligence engine that aggregates historical incident data to identify repeated danger hotspots, monitor dispatch response times, and measure safety SLA compliance.
 - **Target Customer**: University Executive Leadership, Campus Risk Management & Insurance Auditors, Accreditation Bodies.
 
 ### 2. Core Capabilities & Features
 - **Repeated Incident Hotspot Analysis**: Groups incidents by building and campus zone to highlight hazard recurrence and critical emergency concentrations.
-- **Response Time Analytics**: Computes real mathematical dispatch speed:
-  $$\text{Response Time} = \text{Timestamp}(\text{assignedAt}) - \text{Timestamp}(\text{createdAt})$$
-- Average and median response times broken down by category and severity.
-- Target SLA compliance rate measurement (target &le; 15 min dispatch).
+- **Response Time Analytics**: Computes real dispatch speed:
+  $$\text{Average Response Time} = \text{Average}(\text{Timestamp}(\text{assignedAt}) - \text{Timestamp}(\text{createdAt}))$$
+- Average and median response times broken down by emergency category and threat severity.
+- Target SLA compliance measurement (CampusResQ configurable target SLA of &le; 15 min dispatch).
 - 7-Day volume trends comparing reported cases against resolved cases.
 
 ### 3. Firebase Dependencies
@@ -112,5 +111,5 @@ This document defines the **Three Separable Commercial Product Modules** (plus o
 - **Purpose**: Safe reporting channel for sensitive complaints (anti-ragging, harassment, internal disputes) protecting student identities.
 - **Features**:
   - `isAnonymous: true` flag.
-  - Reporter contact information hidden in normal responder-facing dashboards.
+  - Reporter contact information hidden in responder-facing dashboards.
   - Access-controlled evidence protection under strict Firebase Storage rules.

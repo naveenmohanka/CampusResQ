@@ -34,20 +34,20 @@ export const AnalyticsPage: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          Campus Safety Intelligence & SLA Analytics
+          Campus Safety Intelligence & Response Analytics
           <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/10 text-teal-400 font-mono border border-teal-500/30">
             Module 3
           </span>
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Algorithmic analysis of repeated campus emergency hotspots, dispatch response latencies, and resolution efficiency.
+          Historical analysis of repeated campus emergency hotspots, average response times, and resolution performance.
         </p>
       </div>
 
       {/* KPI Intelligence Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Average Dispatch Time"
+          title="Average Response Time"
           value={`${intelligence.avgResponseTimeMinutes} min`}
           subtitle="Incident report to responder assignment"
           icon={<Clock className="w-5 h-5" />}
@@ -55,7 +55,7 @@ export const AnalyticsPage: React.FC = () => {
           loading={loading}
         />
         <StatCard
-          title="Median Response Latency"
+          title="Median Response Time"
           value={`${intelligence.medianResponseTimeMinutes} min`}
           subtitle="50th percentile dispatch speed"
           icon={<Activity className="w-5 h-5" />}
@@ -65,7 +65,7 @@ export const AnalyticsPage: React.FC = () => {
         <StatCard
           title="Target SLA Compliance"
           value={`${intelligence.slaComplianceRate}%`}
-          subtitle="Dispatched within 15 min SLA"
+          subtitle="Within CampusResQ <=15m target SLA"
           icon={<ShieldCheck className="w-5 h-5" />}
           accentColor="emerald"
           loading={loading}
@@ -84,12 +84,12 @@ export const AnalyticsPage: React.FC = () => {
       <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-start gap-3 text-xs text-slate-300">
         <Info className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <p className="font-semibold text-white">Mathematical SLA & Response Time Formulation:</p>
+          <p className="font-semibold text-white">Response Time & Target SLA Formula:</p>
           <p className="text-slate-400 font-mono text-[11px]">
-            Response Time (T_resp) = Timestamp(assignedAt) - Timestamp(createdAt) | Target SLA: T_resp &le; 15 minutes
+            Response Time = Timestamp(assignedAt) - Timestamp(createdAt) | CampusResQ Configurable Target SLA &le; 15 minutes
           </p>
           <p className="text-slate-500 text-[11px]">
-            All response metrics are computed directly from authentic Firestore document timestamps across the emergency lifecycle.
+            Metrics are computed directly from stored Firestore document lifecycle timestamps.
           </p>
         </div>
       </div>
@@ -166,8 +166,8 @@ export const AnalyticsPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-teal-400" />
             <div>
-              <h3 className="font-bold text-white text-base">Avg Response Time by Category</h3>
-              <p className="text-xs text-slate-400">Dispatch speed (in minutes) across emergency types</p>
+              <h3 className="font-bold text-white text-base">Average Response Time by Category</h3>
+              <p className="text-xs text-slate-400">Average response time (in minutes) across emergency types</p>
             </div>
           </div>
 
@@ -179,7 +179,7 @@ export const AnalyticsPage: React.FC = () => {
                 <YAxis dataKey="category" type="category" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} width={80} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                  formatter={(val: any) => [`${val} min`, 'Avg Dispatch Time']}
+                  formatter={(val: any) => [`${val} min`, 'Average Response Time']}
                 />
                 <Bar dataKey="avgMinutes" fill="#14b8a6" radius={[0, 6, 6, 0]} />
               </BarChart>
@@ -193,7 +193,7 @@ export const AnalyticsPage: React.FC = () => {
             <AlertTriangle className="w-5 h-5 text-amber-400" />
             <div>
               <h3 className="font-bold text-white text-base">Response Time by Threat Severity</h3>
-              <p className="text-xs text-slate-400">Comparing SLA dispatch speed against severity levels</p>
+              <p className="text-xs text-slate-400">Comparing response speeds across severity levels</p>
             </div>
           </div>
 
@@ -205,7 +205,7 @@ export const AnalyticsPage: React.FC = () => {
                 <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} unit="m" />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                  formatter={(val: any) => [`${val} min`, 'Avg Dispatch Time']}
+                  formatter={(val: any) => [`${val} min`, 'Average Response Time']}
                 />
                 <Bar dataKey="avgMinutes" fill="#38bdf8" radius={[6, 6, 0, 0]} />
               </BarChart>
