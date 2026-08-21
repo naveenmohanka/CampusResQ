@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "450575997759",
+    "project_id": "campusresq-29f13",
+    "storage_bucket": "campusresq-29f13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450575997759:android:82f0abf5dd42707b74518a",
+        "android_client_info": {
+          "package_name": "com.kiit.campusresq"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "450575997759-1no0pci0fvm8cujdm84oer6v8sj1nts6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kiit.campusresq",
+            "certificate_hash": "d0f7452c644f09ff55fc5b2935b50296c17f6bd9"
+          }
+        },
+        {
+          "client_id": "450575997759-idijeptvpadvbjjgm55kgqshdm1ggbm5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjsvy7uaoqAUyQpyhFtiG3itLxtBkHkEI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "450575997759-idijeptvpadvbjjgm55kgqshdm1ggbm5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
