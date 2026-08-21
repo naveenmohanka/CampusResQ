@@ -18,7 +18,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]';
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]';
 
   const sizeStyles = {
     sm: 'px-3 py-1.5 text-xs gap-1.5',
@@ -27,12 +27,12 @@ export const Button: React.FC<ButtonProps> = ({
   }[size];
 
   const variantStyles = {
-    primary: 'bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold shadow-glow-teal focus:ring-teal-400',
-    secondary: 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 focus:ring-slate-400',
-    danger: 'bg-rose-600 hover:bg-rose-500 text-white shadow-glow-red focus:ring-rose-500',
-    emergency: 'bg-red-600 hover:bg-red-500 text-white font-bold tracking-wide shadow-glow-red animate-pulse focus:ring-red-500',
-    ghost: 'bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white focus:ring-slate-500',
-    outline: 'bg-transparent border border-teal-500/40 text-teal-300 hover:bg-teal-500/10 focus:ring-teal-500',
+    primary: 'bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-sm focus:ring-violet-500',
+    secondary: 'bg-[var(--bg-subtle)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-color)] focus:ring-violet-500',
+    danger: 'bg-red-600 hover:bg-red-700 text-white font-semibold focus:ring-red-500 shadow-sm',
+    emergency: 'bg-red-600 hover:bg-red-700 text-white font-bold tracking-wide focus:ring-red-500 shadow-sm',
+    ghost: 'bg-transparent hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] focus:ring-violet-500',
+    outline: 'bg-transparent border border-violet-500/40 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10 focus:ring-violet-500',
   }[variant];
 
   return (

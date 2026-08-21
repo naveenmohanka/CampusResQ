@@ -26,31 +26,22 @@ export const StatCard: React.FC<StatCardProps> = ({
   onClick,
 }) => {
   const chosenAccent = (accentColor as any) || accent;
-  const accentGlow = {
-    red: 'hover:border-red-500/50 group-hover:text-red-400 border-red-500/20 shadow-glow-red/20',
-    amber: 'hover:border-amber-500/50 group-hover:text-amber-400 border-amber-500/20 shadow-glow-amber/20',
-    emerald: 'hover:border-emerald-500/50 group-hover:text-emerald-400 border-emerald-500/20',
-    cyan: 'hover:border-teal-500/50 group-hover:text-teal-400 border-teal-500/20 shadow-glow-teal/20',
-    teal: 'hover:border-teal-500/50 group-hover:text-teal-400 border-teal-500/20 shadow-glow-teal/20',
-    purple: 'hover:border-purple-500/50 group-hover:text-purple-400 border-purple-500/20',
-    slate: 'hover:border-slate-600 border-slate-800',
-  }[chosenAccent as string] || 'hover:border-teal-500/50 border-teal-500/20';
 
   const iconBg = {
-    red: 'bg-red-500/10 text-red-400 border-red-500/30',
-    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    cyan: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
-    teal: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
-    purple: 'bg-purple-500/10 text-purple-400 border-purple-500/30',
-    slate: 'bg-slate-800 text-slate-300 border-slate-700',
-  }[chosenAccent as string] || 'bg-teal-500/10 text-teal-400 border-teal-500/30';
+    red: 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20',
+    cyan: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
+    teal: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20',
+    purple: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20',
+    slate: 'bg-slate-100 dark:bg-neutral-800 text-slate-600 dark:text-neutral-300 border border-slate-200 dark:border-neutral-700',
+  }[chosenAccent as string] || 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20';
 
   if (loading) {
     return (
-      <div className="glass-panel p-5 rounded-2xl border border-slate-800 animate-pulse">
-        <div className="h-4 bg-slate-800 rounded w-1/3 mb-3"></div>
-        <div className="h-8 bg-slate-800 rounded w-1/2"></div>
+      <div className="clean-card p-5 rounded-2xl animate-pulse">
+        <div className="h-4 bg-[var(--border-color)] rounded w-1/3 mb-3"></div>
+        <div className="h-8 bg-[var(--border-color)] rounded w-1/2"></div>
       </div>
     );
   }
@@ -58,32 +49,32 @@ export const StatCard: React.FC<StatCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`glass-panel p-5 rounded-2xl border transition-all duration-200 group ${
-        onClick ? 'cursor-pointer hover:-translate-y-1' : ''
-      } ${accentGlow}`}
+      className={`clean-card p-5 rounded-2xl transition-all duration-150 group ${
+        onClick ? 'cursor-pointer hover:border-violet-500/50 hover:shadow-sm' : ''
+      }`}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-semibold tracking-wider uppercase text-slate-400">{title}</p>
-          <p className="text-3xl font-extrabold text-white tracking-tight">{value}</p>
+          <p className="text-xs font-semibold tracking-wider uppercase text-[var(--text-muted)]">{title}</p>
+          <p className="text-3xl font-extrabold text-[var(--text-primary)] tracking-tight">{value}</p>
         </div>
-        <div className={`p-3 rounded-xl border ${iconBg} transition-transform duration-200 group-hover:scale-110`}>
+        <div className={`p-2.5 rounded-xl ${iconBg}`}>
           {icon}
         </div>
       </div>
       {(subtitle || trend) && (
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-          {subtitle && <span className="text-slate-400">{subtitle}</span>}
+        <div className="mt-4 pt-3 border-t border-[var(--border-color)] flex items-center justify-between text-xs">
+          {subtitle && <span className="text-[var(--text-muted)]">{subtitle}</span>}
           {trend && (
             <span
               className={`font-semibold ${
                 trendType === 'urgent'
-                  ? 'text-red-400 animate-pulse'
+                  ? 'text-red-600 dark:text-red-400'
                   : trendType === 'positive'
-                  ? 'text-emerald-400'
+                  ? 'text-emerald-600 dark:text-emerald-400'
                   : trendType === 'negative'
-                  ? 'text-amber-400'
-                  : 'text-slate-400'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-[var(--text-muted)]'
               }`}
             >
               {trend}

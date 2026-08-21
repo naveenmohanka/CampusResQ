@@ -17,11 +17,11 @@ export const Dashboard: React.FC = () => {
       {/* Top Header & Emergency Broadcast Trigger */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
             Campus Emergency Monitoring Command
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1">
             Real-time incident ingestion, AI priority classification, and campus response status.
           </p>
         </div>
@@ -31,7 +31,7 @@ export const Dashboard: React.FC = () => {
             variant="danger"
             size="sm"
             onClick={() => setIsAlertModalOpen(true)}
-            icon={<Radio className="w-3.5 h-3.5 animate-pulse" />}
+            icon={<Radio className="w-3.5 h-3.5" />}
           >
             Broadcast Alert
           </Button>
@@ -39,7 +39,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-200 text-xs">
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs">
           <strong>Connection Error:</strong> {error.message}
         </div>
       )}

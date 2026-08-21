@@ -14,16 +14,16 @@ export const IncidentFiltersBar: React.FC<IncidentFiltersProps> = ({
   onReset,
 }) => {
   return (
-    <div className="glass-panel p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
+    <div className="clean-card p-4 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-center">
       {/* Search Input */}
       <div className="lg:col-span-2 relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           type="text"
           placeholder="Search by title, category, location, ID..."
           value={filters.searchQuery || ''}
           onChange={(e) => onFilterChange({ ...filters, searchQuery: e.target.value })}
-          className="w-full pl-10 pr-4 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500/50"
+          className="w-full pl-10 pr-4 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
         />
       </div>
 
@@ -37,7 +37,7 @@ export const IncidentFiltersBar: React.FC<IncidentFiltersProps> = ({
               status: e.target.value as IncidentStatus | 'all',
             })
           }
-          className="w-full px-3.5 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-teal-500/50"
+          className="w-full px-3.5 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
         >
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
@@ -57,7 +57,7 @@ export const IncidentFiltersBar: React.FC<IncidentFiltersProps> = ({
               aiSeverity: e.target.value as any,
             })
           }
-          className="w-full px-3.5 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-teal-500/50"
+          className="w-full px-3.5 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
         >
           <option value="all">All AI Severities</option>
           <option value="CRITICAL">Critical Priority</option>
@@ -77,7 +77,7 @@ export const IncidentFiltersBar: React.FC<IncidentFiltersProps> = ({
               sortBy: e.target.value as any,
             })
           }
-          className="w-full px-3 py-2 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-teal-500/50"
+          className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
         >
           <option value="newest">Sort: Newest</option>
           <option value="priority">Sort: Severity / Priority</option>
@@ -86,7 +86,7 @@ export const IncidentFiltersBar: React.FC<IncidentFiltersProps> = ({
         <button
           onClick={onReset}
           title="Reset Filters"
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex-shrink-0"
+          className="p-2 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors flex-shrink-0"
         >
           <RotateCcw className="w-4 h-4" />
         </button>

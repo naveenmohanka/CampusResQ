@@ -141,8 +141,8 @@ export const IncidentDetail: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-semibold text-slate-400">Loading incident dossier #{id}...</p>
+          <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-semibold text-[var(--text-muted)]">Loading incident dossier #{id}...</p>
         </div>
       </div>
     );
@@ -151,8 +151,8 @@ export const IncidentDetail: React.FC = () => {
   if (!incident) {
     return (
       <div className="text-center py-16 space-y-4">
-        <h2 className="text-xl font-bold text-white">Incident Not Found</h2>
-        <p className="text-xs text-slate-400">The requested emergency incident does not exist in the database.</p>
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">Incident Not Found</h2>
+        <p className="text-xs text-[var(--text-muted)]">The requested emergency incident does not exist in the database.</p>
         <Button variant="secondary" size="sm" onClick={() => navigate('/incidents')}>
           ← Return to Incidents Feed
         </Button>
@@ -183,19 +183,19 @@ export const IncidentDetail: React.FC = () => {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-sm font-bold text-teal-400">
+              <span className="font-mono text-sm font-bold text-violet-600 dark:text-violet-400">
                 #{incident.id}
               </span>
               <CategoryBadge category={incident.category} />
               <StatusBadge status={incident.status} />
               {immediate && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-950 text-red-300 border border-red-600 animate-pulse">
-                  <Zap className="w-3 h-3 text-red-400" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30">
+                  <Zap className="w-3 h-3" />
                   REQUIRES IMMEDIATE RESPONSE
                 </span>
               )}
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight mt-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight mt-1">
               {incident.title}
             </h1>
           </div>
@@ -209,7 +209,7 @@ export const IncidentDetail: React.FC = () => {
               variant="primary"
               size="sm"
               onClick={() => setIsResolveModalOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-950/50"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 shadow-sm"
             >
               <CheckCircle2 className="w-4 h-4" />
               Resolve Incident
@@ -217,14 +217,14 @@ export const IncidentDetail: React.FC = () => {
           )}
 
           {isResolved ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
               <span>Resolved</span>
-              <Lock className="w-3.5 h-3.5 text-emerald-400 ml-1" />
+              <Lock className="w-3.5 h-3.5 text-emerald-500 ml-1" />
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs">
-              <Clock className="w-4 h-4 text-teal-400" />
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] text-[var(--text-secondary)] text-xs">
+              <Clock className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               <span>Reported {formatTimeAgo(incident.createdAt)}</span>
             </div>
           )}
@@ -236,25 +236,25 @@ export const IncidentDetail: React.FC = () => {
         {/* Left Column: Details & AI Triage */}
         <div className="lg:col-span-2 space-y-6">
           {/* AI Analysis & Severity Override Card */}
-          <div className="glass-panel p-5 rounded-2xl border border-teal-500/30 bg-teal-950/10 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="clean-card p-5 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-500/40 shadow-glow-teal">
+                <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
+                  <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-1.5">
                     AI Triage & Severity Control
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 font-mono">
                       Android Contract
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-400">AI analysis preserved • Admin severity override enabled</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">AI analysis preserved • Admin severity override enabled</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-[11px] text-slate-400 font-semibold">Effective Severity:</span>
+                <span className="text-[11px] text-[var(--text-muted)] font-semibold">Effective:</span>
                 <AiSeverityBadge
                   severity={effectiveSeverity}
                   requiresImmediateResponse={immediate}
@@ -265,35 +265,35 @@ export const IncidentDetail: React.FC = () => {
             {/* Severity Triage Breakdown Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               {/* 1. AI Generated Severity */}
-              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Bot className="w-3 h-3 text-teal-400" />
+              <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] space-y-1">
+                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1">
+                  <Bot className="w-3 h-3 text-violet-600 dark:text-violet-400" />
                   AI Recommended
                 </span>
-                <p className="text-sm font-extrabold text-teal-300 uppercase font-mono">
+                <p className="text-sm font-extrabold text-violet-700 dark:text-violet-300 uppercase font-mono">
                   {aiOriginalSeverity}
                 </p>
                 {ai?.priorityScore !== undefined && (
-                  <p className="text-[10px] text-slate-500 font-mono">
+                  <p className="text-[10px] text-[var(--text-muted)] font-mono">
                     Priority Score: {ai.priorityScore}/10
                   </p>
                 )}
               </div>
 
               {/* 2. Admin Manual Override */}
-              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Sliders className="w-3 h-3 text-amber-400" />
+              <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] space-y-1.5">
+                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1">
+                  <Sliders className="w-3 h-3 text-amber-500" />
                   Admin Override
                 </span>
 
                 {isResolved ? (
                   <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-bold text-slate-400">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)] text-xs font-bold text-[var(--text-muted)]">
                       <span>{effectiveSeverity}</span>
-                      <Lock className="w-3 h-3 text-slate-500 ml-auto" />
+                      <Lock className="w-3 h-3 text-[var(--text-muted)] ml-auto" />
                     </div>
-                    <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <Lock className="w-2.5 h-2.5" />
                       Severity is locked after resolution.
                     </p>
@@ -304,7 +304,7 @@ export const IncidentDetail: React.FC = () => {
                       value={effectiveSeverity}
                       disabled={updatingSeverity}
                       onChange={(e) => handleSeverityChange(e.target.value as any)}
-                      className="w-full px-2.5 py-1 bg-slate-950 border border-teal-500/40 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-teal-400"
+                      className="w-full px-2.5 py-1 bg-[var(--bg-surface)] border border-violet-500/30 rounded-lg text-xs font-bold text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
                     >
                       <option value="LOW">LOW</option>
                       <option value="MEDIUM">MEDIUM</option>
@@ -312,7 +312,7 @@ export const IncidentDetail: React.FC = () => {
                       <option value="CRITICAL">CRITICAL</option>
                     </select>
                     {incident.adminSeverity && (
-                      <p className="text-[10px] text-amber-300">
+                      <p className="text-[10px] text-amber-600 dark:text-amber-300">
                         Overridden by {incident.adminSeverityChangedBy || 'Admin'}
                       </p>
                     )}
@@ -321,15 +321,15 @@ export const IncidentDetail: React.FC = () => {
               </div>
 
               {/* 3. Immediate Response Status */}
-              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-red-400" />
+              <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] space-y-1">
+                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-red-500" />
                   Immediate Dispatch
                 </span>
-                <p className={`text-sm font-extrabold ${immediate ? 'text-red-400' : 'text-slate-300'}`}>
+                <p className={`text-sm font-extrabold ${immediate ? 'text-red-600 dark:text-red-400' : 'text-[var(--text-secondary)]'}`}>
                   {immediate ? '⚡ Yes (Urgent)' : 'Standard Queue'}
                 </p>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-[var(--text-muted)]">
                   {immediate ? 'Priority fast-track' : 'Standard SLA tracking'}
                 </p>
               </div>
@@ -337,52 +337,52 @@ export const IncidentDetail: React.FC = () => {
 
             {/* AI Summary & Suggested Action */}
             {ai ? (
-              <div className="space-y-3 pt-2 border-t border-slate-800/80 text-xs">
+              <div className="space-y-3 pt-2 border-t border-[var(--border-color)] text-xs">
                 {ai.summary && (
-                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                      <Bot className="w-3 h-3 text-teal-400" />
+                  <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] space-y-1">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1">
+                      <Bot className="w-3 h-3 text-violet-600 dark:text-violet-400" />
                       AI Situation Summary
                     </span>
-                    <p className="text-slate-200 leading-relaxed">{ai.summary}</p>
+                    <p className="text-[var(--text-secondary)] leading-relaxed">{ai.summary}</p>
                   </div>
                 )}
 
                 {ai.suggestedAction && (
-                  <div className="p-3.5 rounded-xl bg-slate-900/90 border border-teal-500/20 space-y-1">
-                    <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1">
+                  <div className="p-3.5 rounded-xl bg-violet-500/5 border border-violet-500/20 space-y-1">
+                    <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1">
                       <Zap className="w-3 h-3" />
                       Recommended Response Action
                     </span>
-                    <p className="text-teal-200 leading-relaxed font-medium">{ai.suggestedAction}</p>
+                    <p className="text-violet-900 dark:text-violet-200 leading-relaxed font-medium">{ai.suggestedAction}</p>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="py-4 text-center text-xs text-slate-400 bg-slate-900/60 rounded-xl border border-slate-800">
-                <AlertTriangle className="w-4 h-4 text-amber-400 mx-auto mb-1" />
+              <div className="py-4 text-center text-xs text-[var(--text-muted)] bg-[var(--bg-subtle)] rounded-xl border border-[var(--border-color)]">
+                <AlertTriangle className="w-4 h-4 text-amber-500 mx-auto mb-1" />
                 <span>AI analysis unavailable for this record.</span>
               </div>
             )}
           </div>
 
           {/* Description & Situation Overview */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="font-bold text-white text-sm">Full Situation Report</h3>
-            <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+          <div className="clean-card p-5 rounded-2xl space-y-3">
+            <h3 className="font-bold text-[var(--text-primary)] text-sm">Full Situation Report</h3>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap">
               {incident.description}
             </p>
           </div>
 
           {/* Media / Photographic Evidence */}
           {incident.images && incident.images.length > 0 && (
-            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
+            <div className="clean-card p-5 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-teal-400" />
+                <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                   Attached Evidence & Media ({incident.images.length})
                 </h3>
-                <span className="text-[10px] text-slate-400 font-mono">Firebase Storage Protected</span>
+                <span className="text-[10px] text-[var(--text-muted)] font-mono">Firebase Storage Protected</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -390,14 +390,14 @@ export const IncidentDetail: React.FC = () => {
                   <div
                     key={idx}
                     onClick={() => setActiveMedia(imgUrl)}
-                    className="relative aspect-video rounded-xl overflow-hidden border border-slate-800 hover:border-teal-500/50 cursor-pointer group bg-slate-900"
+                    className="relative aspect-video rounded-xl overflow-hidden border border-[var(--border-color)] hover:border-violet-500 cursor-pointer group bg-[var(--bg-subtle)]"
                   >
                     <img
                       src={imgUrl}
                       alt={`Incident evidence ${idx + 1}`}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                     />
-                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1">
                       <Eye className="w-3.5 h-3.5" />
                       View
                     </div>
@@ -409,16 +409,16 @@ export const IncidentDetail: React.FC = () => {
 
           {/* Resolution Notes (If Resolved) */}
           {incident.resolutionNotes && (
-            <div className="glass-panel p-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/10 space-y-2">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+            <div className="clean-card p-5 rounded-2xl border-emerald-500/30 bg-emerald-500/5 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
                 <CheckCircle2 className="w-4 h-4" />
                 <h3>Response Team Resolution Report</h3>
               </div>
-              <p className="text-xs text-slate-200 leading-relaxed">
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 {incident.resolutionNotes}
               </p>
               {incident.resolvedAt && (
-                <p className="text-[11px] text-slate-400 font-mono pt-1">
+                <p className="text-[11px] text-[var(--text-muted)] font-mono pt-1">
                   Resolved on: {formatDate(incident.resolvedAt)}
                 </p>
               )}
@@ -429,15 +429,15 @@ export const IncidentDetail: React.FC = () => {
         {/* Right Column: Location, Reporter, Response Team & Timestamps */}
         <div className="space-y-6">
           {/* Location & Map Blueprint */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-teal-400" />
+          <div className="clean-card p-5 rounded-2xl space-y-3">
+            <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               Incident Location
             </h3>
-            <p className="text-xs text-slate-200 font-semibold">
+            <p className="text-xs text-[var(--text-primary)] font-semibold">
               {formatLocationString(incident.location)}
             </p>
-            <div className="rounded-xl overflow-hidden border border-slate-800">
+            <div className="rounded-xl overflow-hidden border border-[var(--border-color)]">
               <IncidentMap
                 location={incident.location}
                 severity={effectiveSeverity}
@@ -447,109 +447,109 @@ export const IncidentDetail: React.FC = () => {
           </div>
 
           {/* Reporter Information */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <User className="w-4 h-4 text-teal-400" />
+          <div className="clean-card p-5 rounded-2xl space-y-3">
+            <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+              <User className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               Reporter Information
             </h3>
 
             {incident.isAnonymous ? (
-              <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-1">
-                <div className="flex items-center gap-1.5 text-purple-300 font-bold text-xs">
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+                <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-300 font-bold text-xs">
                   <ShieldCheck className="w-4 h-4" />
                   <span>Confidential / Anonymous Report</span>
                 </div>
-                <p className="text-[11px] text-purple-200">
+                <p className="text-[11px] text-purple-600 dark:text-purple-300">
                   Reporter identity is protected by campus confidentiality rules.
                 </p>
               </div>
             ) : (
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Name:</span>
-                  <span className="font-semibold text-white">{incident.reporterName || 'Student Reporter'}</span>
+                  <span className="text-[var(--text-muted)]">Name:</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{incident.reporterName || 'Student Reporter'}</span>
                 </div>
                 {incident.reporterEmail && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Email:</span>
-                    <span className="font-mono text-slate-300">{incident.reporterEmail}</span>
+                    <span className="text-[var(--text-muted)]">Email:</span>
+                    <span className="font-mono text-[var(--text-secondary)]">{incident.reporterEmail}</span>
                   </div>
                 )}
                 {incident.reporterPhone && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Phone:</span>
-                    <span className="font-mono text-slate-300">{incident.reporterPhone}</span>
+                    <span className="text-[var(--text-muted)]">Phone:</span>
+                    <span className="font-mono text-[var(--text-secondary)]">{incident.reporterPhone}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Reporter ID:</span>
-                  <span className="font-mono text-slate-400">{incident.reporterId || 'N/A'}</span>
+                  <span className="text-[var(--text-muted)]">Reporter ID:</span>
+                  <span className="font-mono text-[var(--text-muted)]">{incident.reporterId || 'N/A'}</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Assigned Response Team Member */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-indigo-400" />
+          <div className="clean-card p-5 rounded-2xl space-y-3">
+            <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               Response Team Assignment
             </h3>
 
             {incident.assignedToName ? (
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Assigned To:</span>
-                  <span className="font-bold text-indigo-300">{incident.assignedToName}</span>
+                  <span className="text-[var(--text-muted)]">Assigned To:</span>
+                  <span className="font-bold text-violet-700 dark:text-violet-300">{incident.assignedToName}</span>
                 </div>
                 {incident.assignedToEmail && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Email:</span>
-                    <span className="font-mono text-slate-300">{incident.assignedToEmail}</span>
+                    <span className="text-[var(--text-muted)]">Email:</span>
+                    <span className="font-mono text-[var(--text-secondary)]">{incident.assignedToEmail}</span>
                   </div>
                 )}
                 {incident.assignedAt && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Assigned At:</span>
-                    <span className="font-mono text-slate-400">{formatTimeAgo(incident.assignedAt)}</span>
+                    <span className="text-[var(--text-muted)]">Assigned At:</span>
+                    <span className="font-mono text-[var(--text-muted)]">{formatTimeAgo(incident.assignedAt)}</span>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="py-3 text-center rounded-xl bg-slate-900 border border-slate-800 text-xs text-amber-400">
+              <div className="py-3 text-center rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-color)] text-xs text-amber-600 dark:text-amber-400">
                 Awaiting Response Team Pickup
               </div>
             )}
           </div>
 
           {/* Incident Lifecycle Timestamps */}
-          <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-3">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-teal-400" />
+          <div className="clean-card p-5 rounded-2xl space-y-3">
+            <h3 className="font-bold text-[var(--text-primary)] text-sm flex items-center gap-2">
+              <Clock className="w-4 h-4 text-violet-600 dark:text-violet-400" />
               Response Lifecycle Timestamps
             </h3>
 
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Reported:</span>
-                <span className="font-mono text-slate-300">{formatDate(incident.createdAt)}</span>
+                <span className="text-[var(--text-muted)]">Reported:</span>
+                <span className="font-mono text-[var(--text-secondary)]">{formatDate(incident.createdAt)}</span>
               </div>
               {incident.assignedAt && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Assigned:</span>
-                  <span className="font-mono text-slate-300">{formatDate(incident.assignedAt)}</span>
+                  <span className="text-[var(--text-muted)]">Assigned:</span>
+                  <span className="font-mono text-[var(--text-secondary)]">{formatDate(incident.assignedAt)}</span>
                 </div>
               )}
               {incident.inProgressAt && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">In Progress:</span>
-                  <span className="font-mono text-slate-300">{formatDate(incident.inProgressAt)}</span>
+                  <span className="text-[var(--text-muted)]">In Progress:</span>
+                  <span className="font-mono text-[var(--text-secondary)]">{formatDate(incident.inProgressAt)}</span>
                 </div>
               )}
               {incident.resolvedAt && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Resolved:</span>
-                  <span className="font-mono text-emerald-400 font-semibold">{formatDate(incident.resolvedAt)}</span>
+                  <span className="text-[var(--text-muted)]">Resolved:</span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{formatDate(incident.resolvedAt)}</span>
                 </div>
               )}
             </div>
@@ -559,35 +559,35 @@ export const IncidentDetail: React.FC = () => {
 
       {/* Resolve Incident Confirmation Modal */}
       {isResolveModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl bg-slate-900/95">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2 text-emerald-400">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="clean-card max-w-md w-full p-6 rounded-2xl space-y-4 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-color)]">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="w-5 h-5" />
-                <h3 className="font-bold text-white text-base">Resolve this incident?</h3>
+                <h3 className="font-bold text-[var(--text-primary)] text-base">Resolve this incident?</h3>
               </div>
               <button
                 onClick={() => setIsResolveModalOpen(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
               This will mark the incident as <strong>RESOLVED</strong> and record the resolution timestamp via server time.
               The incident severity/threat level will become <strong>permanently locked</strong>.
             </p>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-slate-400 uppercase">
+              <label className="text-[11px] font-semibold text-[var(--text-muted)] uppercase">
                 Resolution Findings / Report (Optional)
               </label>
               <textarea
                 value={resolutionNotes}
                 onChange={(e) => setResolutionNotes(e.target.value)}
                 placeholder="Enter responder findings, medical notes, or facility repair details..."
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 h-20 resize-none"
+                className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-emerald-500 h-20 resize-none"
               />
             </div>
 
@@ -605,7 +605,7 @@ export const IncidentDetail: React.FC = () => {
                 size="sm"
                 onClick={handleConfirmResolve}
                 loading={resolving}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               >
                 Confirm Resolution
               </Button>
@@ -617,10 +617,10 @@ export const IncidentDetail: React.FC = () => {
       {/* Lightbox Media Modal */}
       {activeMedia && (
         <div
-          className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
           onClick={() => setActiveMedia(null)}
         >
-          <div className="max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-slate-800 bg-slate-900">
+          <div className="max-w-4xl max-h-[85vh] rounded-2xl overflow-hidden border border-[var(--border-color)] bg-[var(--bg-surface)]">
             <img src={activeMedia} alt="Full evidence preview" className="w-full h-full object-contain" />
           </div>
         </div>

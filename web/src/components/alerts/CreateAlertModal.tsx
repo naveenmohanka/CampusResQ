@@ -1,11 +1,11 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { AlertSeverity, AlertCategory } from '../../types/alert';
 import { createCampusAlert } from '../../services/alertService';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotification } from '../../context/NotificationContext';
-import { Radio, AlertOctagon, MapPin, Clock } from 'lucide-react';
+import { Radio, MapPin, Clock } from 'lucide-react';
 
 interface CreateAlertModalProps {
   isOpen: boolean;
@@ -30,50 +30,44 @@ export const CreateAlertModal: React.FC<CreateAlertModalProps> = ({ isOpen, onCl
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [severity, setSeverity] = useState<AlertSeverity>('warning');
-  const [category, setCategory] = useState<AlertCategory>('emergency');
+  const [category, setCategory] = useState<AlertCategory>('security');
   const [targetArea, setTargetArea] = useState(CAMPUS_AREAS[0]);
-  const [expiresHours, setExpiresHours] = useState(4);
+  const [durationHours, setDurationHours] = useState('4');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !message.trim()) {
-      showToast({
-        type: 'error',
-        title: 'Missing Alert Details',
-        message: 'Please provide both an alert title and instruction message.',
-      });
-      return;
-    }
+    if (!title.trim() || !message.trim() || !user) return;
 
     try {
       setLoading(true);
+      const hours = parseInt(durationHours, 10) || 4;
+
       await createCampusAlert(
         title.trim(),
         message.trim(),
         severity,
         category,
         targetArea,
-        user?.id || 'admin-001',
-        user?.name || 'Campus Operations Admin',
-        expiresHours
+        user.id,
+        user.name || 'Administrator',
+        hours
       );
 
       showToast({
         type: 'success',
         title: 'Emergency Broadcast Published',
-        message: `Alert broadcasted successfully to "${targetArea}".`,
+        message: `Alert dispatched to ${targetArea}. Active for ${hours} hours.`,
       });
 
-      // Reset
+      onClose();
       setTitle('');
       setMessage('');
-      onClose();
     } catch (err: any) {
       showToast({
         type: 'error',
-        title: 'Broadcast Failed',
-        message: err.message || 'Unable to publish broadcast alert.',
+        title: 'Failed to Broadcast Alert',
+        message: err.message || 'Could not send broadcast. Verify admin permissions.',
       });
     } finally {
       setLoading(false);
@@ -81,137 +75,135 @@ export const CreateAlertModal: React.FC<CreateAlertModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Broadcast Campus Emergency Alert"
-      maxWidth="max-w-xl"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title="Broadcast Emergency Advisory" maxWidth="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Banner Warning */}
-        <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-200">
-          <AlertOctagon className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-          <span>
-            This alert will be broadcasted across the <strong>Campus Safety Alert Network</strong> and displayed to students, mentors, and security personnel.
-          </span>
+        {/* Severity selection */}
+        <div>
+          <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1.5">
+            Alert Severity Level
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'advisory', label: 'Advisory', color: 'border-blue-500/40 text-blue-600 dark:text-blue-400 bg-blue-500/10' },
+              { id: 'warning', label: 'Warning', color: 'border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10' },
+              { id: 'critical', label: 'Critical', color: 'border-red-500/40 text-red-600 dark:text-red-400 bg-red-500/10' },
+            ].map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSeverity(s.id as AlertSeverity)}
+                className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                  severity === s.id
+                    ? `${s.color} ring-2 ring-violet-500`
+                    : 'bg-[var(--bg-subtle)] border-[var(--border-color)] text-[var(--text-muted)]'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Severity & Category Row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Threat Severity Level
-            </label>
-            <select
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value as AlertSeverity)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-teal-500"
-            >
-              <option value="critical">🚨 CRITICAL (Life Safety Threat)</option>
-              <option value="warning">⚠️ WARNING (Urgent Caution)</option>
-              <option value="advisory">ℹ️ ADVISORY (Campus Notice)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Incident Category
-            </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as AlertCategory)}
-              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-teal-500"
-            >
-              <option value="emergency">General Emergency</option>
-              <option value="fire">Fire Hazard</option>
-              <option value="weather">Severe Weather / Flood</option>
-              <option value="security">Security & Lockdown</option>
-              <option value="health">Public Health Advisory</option>
-              <option value="facility">Infrastructure & Power</option>
-            </select>
-          </div>
+        {/* Category selection */}
+        <div>
+          <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+            Category
+          </label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as AlertCategory)}
+            className="w-full px-3.5 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
+          >
+            <option value="security">Security & Campus Safety</option>
+            <option value="weather">Severe Weather</option>
+            <option value="facility">Infrastructure & Facility</option>
+            <option value="medical">Health & Medical</option>
+            <option value="general">General Advisory</option>
+          </select>
         </div>
 
         {/* Title */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">
+          <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
             Broadcast Headline / Title
           </label>
           <input
             type="text"
             required
-            placeholder="e.g. FLASH FLOOD / SUBWAY ACCESS BLOCKED"
+            placeholder="e.g. Flash Flood Alert, Block-C Water Contamination"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 font-semibold uppercase"
+            className="w-full px-3.5 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500"
           />
-        </div>
-
-        {/* Target Area */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-teal-400" />
-            Target Campus Area / Zone
-          </label>
-          <select
-            value={targetArea}
-            onChange={(e) => setTargetArea(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-teal-500"
-          >
-            {CAMPUS_AREAS.map((area) => (
-              <option key={area} value={area}>
-                {area}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Message */}
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1">
-            Emergency Instructions & Safety Message
+          <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+            Emergency Advisory Message & Instructions
           </label>
           <textarea
             required
             rows={3}
-            placeholder="Provide clear, concise instructions for students and staff in the area..."
+            placeholder="Provide clear safety instructions for students and faculty..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 resize-none"
+            className="w-full px-3.5 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-violet-500 resize-none"
           />
         </div>
 
-        {/* Expiration Duration */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            Auto-Expire After
-          </label>
-          <select
-            value={expiresHours}
-            onChange={(e) => setExpiresHours(Number(e.target.value))}
-            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-teal-500"
-          >
-            <option value={1}>1 Hour</option>
-            <option value={2}>2 Hours</option>
-            <option value={4}>4 Hours (Standard)</option>
-            <option value={8}>8 Hours</option>
-            <option value={24}>24 Hours (Full Day)</option>
-          </select>
+        {/* Target Area & Duration */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+              <MapPin className="w-3.5 h-3.5 inline mr-1 text-violet-600 dark:text-violet-400" />
+              Target Campus Area
+            </label>
+            <select
+              value={targetArea}
+              onChange={(e) => setTargetArea(e.target.value)}
+              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
+            >
+              {CAMPUS_AREAS.map((area) => (
+                <option key={area} value={area}>
+                  {area}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+              <Clock className="w-3.5 h-3.5 inline mr-1 text-violet-600 dark:text-violet-400" />
+              Active Duration
+            </label>
+            <select
+              value={durationHours}
+              onChange={(e) => setDurationHours(e.target.value)}
+              className="w-full px-3 py-2 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl text-xs text-[var(--text-primary)] focus:outline-none focus:border-violet-500"
+            >
+              <option value="1">1 Hour</option>
+              <option value="2">2 Hours</option>
+              <option value="4">4 Hours (Standard)</option>
+              <option value="12">12 Hours</option>
+              <option value="24">24 Hours</option>
+            </select>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
-          <Button type="button" variant="secondary" onClick={onClose}>
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-color)]">
+          <Button variant="secondary" size="sm" type="button" onClick={onClose}>
             Cancel
           </Button>
           <Button
+            variant="danger"
+            size="sm"
             type="submit"
-            variant={severity === 'critical' ? 'danger' : 'primary'}
             loading={loading}
-            icon={<Radio className="w-4 h-4 animate-pulse" />}
+            icon={<Radio className="w-4 h-4" />}
           >
-            Publish Broadcast Alert
+            Publish Broadcast
           </Button>
         </div>
       </form>

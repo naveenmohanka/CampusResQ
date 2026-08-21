@@ -3,68 +3,96 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-slate-800;
+  :root {
+    --bg-page: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f8fafc;
+    --bg-hover: #f1f5f9;
+    --border-color: #e5e7eb;
+    --border-subtle: #f3f4f6;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+
+    --nav-active-bg: #7c3aed;
+    --nav-active-text: #ffffff;
+    --nav-active-icon: #ffffff;
+    --nav-inactive-text: #475569;
+    --nav-hover-bg: #f8fafc;
+    --nav-hover-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
   }
+
+  .dark {
+    --bg-page: #000000;
+    --bg-surface: #0a0a0c;
+    --bg-subtle: #121215;
+    --bg-hover: #18181c;
+    --border-color: #262626;
+    --border-subtle: #1f1f23;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --nav-active-bg: #c4b5fd;
+    --nav-active-text: #0f172a;
+    --nav-active-icon: #6d28d9;
+    --nav-inactive-text: #94a3b8;
+    --nav-hover-bg: #141418;
+    --nav-hover-shadow: none;
+  }
+
   body {
-    @apply bg-slate-950 text-slate-100 antialiased;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 
-/* Custom modern scrollbar */
+/* Custom minimal scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--bg-page);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: var(--border-color);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 1);
+  background: var(--text-muted);
 }
 
-/* Glassmorphic card utility */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Clean operational cards (replaces old gradient glass panels) */
+.glass-panel,
+.clean-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.glass-panel-hover {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.clean-card-subtle {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
 }
 
-.glass-panel-hover:hover {
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(20, 184, 166, 0.3);
-  transform: translateY(-1px);
+/* Navigation Hover Micro-Interaction */
+.nav-link-hover {
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
 }
 
-/* Incident pulse radar animation */
-@keyframes radar-pulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-  }
+.nav-link-hover:hover {
+  transform: scale(1.02);
 }
 
-.radar-ping {
-  animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+/* Theme Toggle Button Transition */
+.theme-toggle-btn {
+  transition: all 180ms ease;
 }
