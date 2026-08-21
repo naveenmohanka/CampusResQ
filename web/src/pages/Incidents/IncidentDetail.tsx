@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getIncidentById, updateIncidentAdminSeverity } from '../../services/incidentService';
+import { getIncidentById, updateIncidentAdminSeverity, updateIncidentStatus } from '../../services/incidentService';
 import { Incident } from '../../types/incident';
 import { AiSeverityBadge, StatusBadge, CategoryBadge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -22,6 +22,7 @@ import {
   Sparkles,
   AlertTriangle,
   Sliders,
+  X,
   Image as ImageIcon
 } from 'lucide-react';
 import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
@@ -43,6 +44,11 @@ export const IncidentDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updatingSeverity, setUpdatingSeverity] = useState(false);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
+
+  // Resolution Modal State
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const [resolutionNotes, setResolutionNotes] = useState('');
 
   useEffect(() => {
     async function loadIncident() {
@@ -96,6 +102,41 @@ export const IncidentDetail: React.FC = () => {
     }
   };
 
+  const handleConfirmResolve = async () => {
+    if (!incident || !id) return;
+    try {
+      setResolving(true);
+      const finalNotes = resolutionNotes.trim() || 'Incident resolved and closed by Admin Commander.';
+      await updateIncidentStatus(id, 'resolved', user?.id, user?.name, finalNotes);
+
+      setIncident((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'resolved',
+              resolvedAt: new Date().toISOString(),
+              resolutionNotes: finalNotes,
+            }
+          : prev
+      );
+
+      showToast({
+        type: 'success',
+        title: 'Incident Resolved',
+        message: 'Incident marked as resolved. Threat level permanently locked.',
+      });
+      setIsResolveModalOpen(false);
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Resolution Failed',
+        message: err.message || 'Failed to resolve incident.',
+      });
+    } finally {
+      setResolving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -123,7 +164,9 @@ export const IncidentDetail: React.FC = () => {
   const aiOriginalSeverity = getIncidentAiSeverity(incident);
   const effectiveSeverity = getEffectiveSeverity(incident);
   const immediate = isImmediateResponseRequired(incident);
-  const isResolved = (incident.status || '').toLowerCase() === 'resolved';
+  const currentStatus = (incident.status || '').toLowerCase();
+  const isResolved = currentStatus === 'resolved';
+  const isInProgress = currentStatus === 'in_progress';
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -158,12 +201,25 @@ export const IncidentDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Status indicator */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Actions & Status Header */}
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          {/* Resolve Button (Visible ONLY when in_progress) */}
+          {isInProgress && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setIsResolveModalOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 shadow-lg shadow-emerald-950/50"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Resolve Incident
+            </Button>
+          )}
+
           {isResolved ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs font-semibold">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Resolved by Response Team</span>
+              <span>Resolved</span>
               <Lock className="w-3.5 h-3.5 text-emerald-400 ml-1" />
             </div>
           ) : (
@@ -500,6 +556,63 @@ export const IncidentDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Resolve Incident Confirmation Modal */}
+      {isResolveModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel max-w-md w-full p-6 rounded-2xl border border-slate-800 space-y-4 shadow-2xl bg-slate-900/95">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircle2 className="w-5 h-5" />
+                <h3 className="font-bold text-white text-base">Resolve this incident?</h3>
+              </div>
+              <button
+                onClick={() => setIsResolveModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              This will mark the incident as <strong>RESOLVED</strong> and record the resolution timestamp via server time.
+              The incident severity/threat level will become <strong>permanently locked</strong>.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-semibold text-slate-400 uppercase">
+                Resolution Findings / Report (Optional)
+              </label>
+              <textarea
+                value={resolutionNotes}
+                onChange={(e) => setResolutionNotes(e.target.value)}
+                placeholder="Enter responder findings, medical notes, or facility repair details..."
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 h-20 resize-none"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsResolveModalOpen(false)}
+                disabled={resolving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleConfirmResolve}
+                loading={resolving}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+              >
+                Confirm Resolution
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox Media Modal */}
       {activeMedia && (

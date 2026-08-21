@@ -322,9 +322,9 @@ const tests = [
     }
   },
 
-  // ⭐ Admin Severity Override & AI Preservation Suite
+  // ⭐ Admin Severity Override & Resolution Suite
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    category: '⭐ Admin Severity Override & Resolution Suite',
     name: 'TEST 9: Pending incident -> Admin changes adminSeverity (MEDIUM -> HIGH) -> ALLOWED',
     run: () => {
       const pending = database.incidents['inc-002']; // status: reported
@@ -333,7 +333,7 @@ const tests = [
     }
   },
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    category: '⭐ Admin Severity Override & Resolution Suite',
     name: 'TEST 10: Accepted incident -> Admin changes adminSeverity (HIGH -> CRITICAL) -> ALLOWED',
     run: () => {
       const accepted = database.incidents['inc-001']; // status: assigned / accepted
@@ -342,7 +342,7 @@ const tests = [
     }
   },
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    category: '⭐ Admin Severity Override & Resolution Suite',
     name: 'TEST 11: In_progress incident -> Admin changes adminSeverity (LOW -> MEDIUM) -> ALLOWED',
     run: () => {
       const inProgress = { ...database.incidents['inc-001'], status: 'in_progress' };
@@ -351,8 +351,17 @@ const tests = [
     }
   },
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
-    name: 'TEST 12: Resolved incident -> Admin attempt to change adminSeverity -> DENIED',
+    category: '⭐ Admin Severity Override & Resolution Suite',
+    name: 'TEST 12: In_progress incident -> Admin marks as RESOLVED -> ALLOWED',
+    run: () => {
+      const inProgress = { ...database.incidents['inc-001'], status: 'in_progress' };
+      const attempted = { ...inProgress, status: 'resolved', resolvedAt: new Date().toISOString() };
+      return evaluator.canUpdateIncident({ uid: 'admin-001' }, inProgress, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & Resolution Suite',
+    name: 'TEST 13: Resolved incident -> Admin attempt to change adminSeverity -> DENIED',
     run: () => {
       const resolved = database.incidents['inc-resolved-critical'];
       const attempted = { ...resolved, adminSeverity: 'LOW' };
@@ -360,8 +369,8 @@ const tests = [
     }
   },
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
-    name: 'TEST 13: Resolved incident -> Admin bypass attempt (resolved -> in_progress + adminSeverity) -> DENIED',
+    category: '⭐ Admin Severity Override & Resolution Suite',
+    name: 'TEST 14: Resolved incident -> Admin bypass attempt (resolved -> in_progress + adminSeverity) -> DENIED',
     run: () => {
       const resolved = database.incidents['inc-resolved-critical'];
       const attempted = { ...resolved, status: 'in_progress', adminSeverity: 'LOW' };
@@ -369,8 +378,8 @@ const tests = [
     }
   },
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
-    name: 'TEST 14: Unauthorized Student -> Attempt to change adminSeverity -> DENIED',
+    category: '⭐ Admin Severity Override & Resolution Suite',
+    name: 'TEST 15: Unauthorized Student -> Attempt to change adminSeverity -> DENIED',
     run: () => {
       const incident = database.incidents['inc-001'];
       const attempted = { ...incident, adminSeverity: 'LOW' };
@@ -378,12 +387,11 @@ const tests = [
     }
   },
   {
-    category: '⭐ Admin Severity Override & AI Preservation Suite',
-    name: 'TEST 15: Admin changes adminSeverity -> original aiAnalysis object preserved untouched',
+    category: '⭐ Admin Severity Override & Resolution Suite',
+    name: 'TEST 16: Admin changes adminSeverity -> original aiAnalysis object preserved untouched',
     run: () => {
       const incident = database.incidents['inc-001'];
       const attempted = { ...incident, adminSeverity: 'CRITICAL', severity: 'critical' };
-      // Verify aiAnalysis remains unchanged
       return attempted.aiAnalysis.severity === 'HIGH' && attempted.adminSeverity === 'CRITICAL';
     }
   },

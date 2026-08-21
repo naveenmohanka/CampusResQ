@@ -2,19 +2,16 @@ import React from 'react';
 import { useIncidents } from '../../hooks/useIncidents';
 import {
   ResponsiveContainer,
-  BarChart,
-  Bar,
   LineChart,
   Line,
   XAxis,
   YAxis,
   Tooltip,
-  Cell,
+  Legend,
   CartesianGrid,
 } from 'recharts';
 import { getEffectiveSeverity } from '../../utils/aiAnalysis';
-import { formatCategory } from '../../utils/formatters';
-import { BarChart3, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
+import { Tag, ShieldAlert, TrendingUp } from 'lucide-react';
 
 const SEVERITY_COLORS = {
   CRITICAL: '#ef4444',
@@ -23,61 +20,108 @@ const SEVERITY_COLORS = {
   LOW: '#14b8a6',
 };
 
-const CATEGORY_PALETTE = ['#14b8a6', '#38bdf8', '#818cf8', '#a855f7', '#ec4899', '#f59e0b', '#64748b'];
+const CATEGORY_COLORS = {
+  Medical: '#14b8a6',
+  Fire: '#ef4444',
+  Security: '#818cf8',
+  Facility: '#38bdf8',
+  Harassment: '#ec4899',
+  Other: '#94a3b8',
+};
 
 export const AnalyticsPage: React.FC = () => {
   const { incidents, loading } = useIncidents();
 
-  // Chart 1: Incidents by Category (Bar Chart)
-  const categoryMap: Record<string, number> = {};
-  incidents.forEach((inc) => {
-    const cat = formatCategory(inc.category);
-    categoryMap[cat] = (categoryMap[cat] || 0) + 1;
-  });
-  const categoryData = Object.entries(categoryMap).map(([category, count]) => ({
-    category,
-    count,
-  }));
-
-  // Chart 2: Incidents by Effective Severity (Bar Chart)
-  const severityMap: Record<string, number> = {
-    CRITICAL: 0,
-    HIGH: 0,
-    MEDIUM: 0,
-    LOW: 0,
-  };
-  incidents.forEach((inc) => {
-    const sev = getEffectiveSeverity(inc);
-    severityMap[sev] = (severityMap[sev] || 0) + 1;
-  });
-  const severityData = Object.entries(severityMap).map(([severity, count]) => ({
-    severity,
-    count,
-  }));
-
-  // Chart 3: Incident Trend Over Time (LINE CHART)
-  // Generates ordered 7-day chronological sequence from live incident timestamps
-  const dayMap: Record<string, number> = {};
+  // 7-day chronological sequence
   const dayKeys: string[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000);
     const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    dayMap[key] = 0;
     dayKeys.push(key);
   }
+
+  // -------------------------------------------------------------
+  // Chart 1: Incidents by Category (LINE CHART)
+  // -------------------------------------------------------------
+  const categoryDayMap: Record<string, Record<string, number>> = {};
+  dayKeys.forEach((key) => {
+    categoryDayMap[key] = {
+      Medical: 0,
+      Fire: 0,
+      Security: 0,
+      Facility: 0,
+      Harassment: 0,
+      Other: 0,
+    };
+  });
 
   incidents.forEach((inc) => {
     if (!inc.createdAt) return;
     const d = new Date(inc.createdAt);
     const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    if (dayMap[key] !== undefined) {
-      dayMap[key]++;
+    if (categoryDayMap[key]) {
+      const rawCat = (inc.category || '').toLowerCase();
+      let catKey = 'Other';
+      if (rawCat.includes('med')) catKey = 'Medical';
+      else if (rawCat.includes('fire')) catKey = 'Fire';
+      else if (rawCat.includes('sec') || rawCat.includes('rag')) catKey = 'Security';
+      else if (rawCat.includes('fac') || rawCat.includes('infra')) catKey = 'Facility';
+      else if (rawCat.includes('harass')) catKey = 'Harassment';
+
+      categoryDayMap[key][catKey] = (categoryDayMap[key][catKey] || 0) + 1;
     }
   });
 
-  const trendData = dayKeys.map((date) => ({
+  const categoryTrendData = dayKeys.map((date) => ({
     date,
-    incidentCount: dayMap[date] || 0,
+    ...categoryDayMap[date],
+  }));
+
+  // -------------------------------------------------------------
+  // Chart 2: Incidents by Severity (LINE CHART)
+  // -------------------------------------------------------------
+  const severityDayMap: Record<string, { CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number }> = {};
+  dayKeys.forEach((key) => {
+    severityDayMap[key] = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  });
+
+  incidents.forEach((inc) => {
+    if (!inc.createdAt) return;
+    const d = new Date(inc.createdAt);
+    const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (severityDayMap[key]) {
+      const effSev = getEffectiveSeverity(inc);
+      if (severityDayMap[key][effSev] !== undefined) {
+        severityDayMap[key][effSev]++;
+      }
+    }
+  });
+
+  const severityTrendData = dayKeys.map((date) => ({
+    date,
+    ...severityDayMap[date],
+  }));
+
+  // -------------------------------------------------------------
+  // Chart 3: Incident Trend Over Time (Overall Volume Line Chart)
+  // -------------------------------------------------------------
+  const totalDayMap: Record<string, number> = {};
+  dayKeys.forEach((key) => {
+    totalDayMap[key] = 0;
+  });
+
+  incidents.forEach((inc) => {
+    if (!inc.createdAt) return;
+    const d = new Date(inc.createdAt);
+    const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (totalDayMap[key] !== undefined) {
+      totalDayMap[key]++;
+    }
+  });
+
+  const totalVolumeData = dayKeys.map((date) => ({
+    date,
+    incidentCount: totalDayMap[date] || 0,
   }));
 
   return (
@@ -88,7 +132,7 @@ export const AnalyticsPage: React.FC = () => {
           Emergency Operations Analytics
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          High-level operational overview across incident categories, effective severity triage, and incident volume trends.
+          Real-time incident trends across categories, effective severity triage, and total incident volume progression.
         </p>
       </div>
 
@@ -98,69 +142,65 @@ export const AnalyticsPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart 1: Incidents by Category */}
+          {/* Chart 1: Incidents by Category (LINE CHART) */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/30">
-                <BarChart3 className="w-4 h-4" />
+                <Tag className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="font-bold text-white text-sm">Incidents by Category</h3>
-                <p className="text-[11px] text-slate-400">Distribution across emergency types</p>
+                <p className="text-[11px] text-slate-400">Incident volume trends across categories over time</p>
               </div>
             </div>
 
             <div className="h-64 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} layout="vertical">
+                <LineChart data={categoryTrendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis type="number" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
-                  <YAxis dataKey="category" type="category" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} width={90} />
+                  <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                  <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                    formatter={(val: any) => [`${val} Cases`, 'Total Incidents']}
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '11px' }}
                   />
-                  <Bar dataKey="count" fill="#14b8a6" radius={[0, 6, 6, 0]}>
-                    {categoryData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                  <Line type="monotone" dataKey="Medical" stroke={CATEGORY_COLORS.Medical} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Fire" stroke={CATEGORY_COLORS.Fire} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Security" stroke={CATEGORY_COLORS.Security} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Facility" stroke={CATEGORY_COLORS.Facility} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Other" stroke={CATEGORY_COLORS.Other} strokeWidth={2} dot={{ r: 3 }} strokeDasharray="3 3" />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Chart 2: Incidents by Effective Severity */}
+          {/* Chart 2: Incidents by Severity (LINE CHART) */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                <PieChartIcon className="w-4 h-4" />
+                <ShieldAlert className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="font-bold text-white text-sm">Incidents by Severity</h3>
-                <p className="text-[11px] text-slate-400">AI Priority & Admin Overrides</p>
+                <p className="text-[11px] text-slate-400">Incident severity trends over time</p>
               </div>
             </div>
 
             <div className="h-64 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={severityData}>
+                <LineChart data={severityTrendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="severity" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                   <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                    formatter={(val: any) => [`${val} Cases`, 'Incident Count']}
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '11px' }}
                   />
-                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                    {severityData.map((entry) => (
-                      <Cell
-                        key={`cell-${entry.severity}`}
-                        fill={SEVERITY_COLORS[entry.severity as keyof typeof SEVERITY_COLORS] || '#14b8a6'}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                  <Line type="monotone" dataKey="CRITICAL" stroke={SEVERITY_COLORS.CRITICAL} strokeWidth={2.5} dot={{ r: 3.5 }} />
+                  <Line type="monotone" dataKey="HIGH" stroke={SEVERITY_COLORS.HIGH} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="MEDIUM" stroke={SEVERITY_COLORS.MEDIUM} strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="LOW" stroke={SEVERITY_COLORS.LOW} strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
@@ -173,13 +213,13 @@ export const AnalyticsPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-bold text-white text-sm">Incident Trend Over Time</h3>
-                <p className="text-[11px] text-slate-400">Daily incident volume progression</p>
+                <p className="text-[11px] text-slate-400">Total daily incident volume progression</p>
               </div>
             </div>
 
             <div className="h-64 mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData}>
+                <LineChart data={totalVolumeData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis
                     dataKey="date"
@@ -193,7 +233,7 @@ export const AnalyticsPage: React.FC = () => {
                   />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                    formatter={(val: any) => [`${val} Incidents`, 'Incident Count']}
+                    formatter={(val: any) => [`${val} Incidents`, 'Total Incidents']}
                   />
                   <Line
                     type="monotone"
