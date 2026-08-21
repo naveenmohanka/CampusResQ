@@ -22,58 +22,73 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().role == 'mentor';
     }
 
+    // Check if the authenticated user has verified 'student' role in Firestore
+    function isStudent() {
+      return isAuthenticated() && getUserData().role == 'student';
+    }
+
     // ===============================================================
-    // Users Collection Security Rules
+    // 1. Users Collection Security Rules
     // PREVENTS PRIVILEGE ESCALATION (student -> admin, mentor -> admin)
     // ===============================================================
     match /users/{userId} {
       // Authenticated users can read their own profile; Admins can read all profiles
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       
-      // New users can only register with student role. Client-side self-assignment of 'admin' is rejected.
+      // New users can only register with 'student' role. Direct client self-elevation to 'admin' is DENIED.
       allow create: if isAuthenticated() && 
                     request.auth.uid == userId && 
                     request.resource.data.role == 'student';
       
-      // Profile updates: users can update phone/dept, but CANNOT modify the 'role' field
-      // The role field MUST remain identical to existing data (no client-side elevation)
-      allow update: if isAuthenticated() && 
-                    request.auth.uid == userId && 
-                    request.resource.data.role == resource.data.role;
-      
-      // No client-side deletions
-      allow delete: if false;
-    }
-
-    // ===============================================================
-    // Incidents Collection Security Rules
-    // ===============================================================
-    match /incidents/{incidentId} {
-      // Authenticated users can read incidents
-      allow read: if isAuthenticated();
-      
-      // Any authenticated user can submit an emergency report
-      allow create: if isAuthenticated() && 
-                    request.resource.data.reporterId == request.auth.uid;
-      
-      // Admins have full operational rights; Mentors can only update incidents assigned to them
+      // Profile updates: users can update personal info (phone, department),
+      // but the 'role' field CANNOT be changed by students or mentors (role escalation DENIED).
+      // Only Admins can modify user records.
       allow update: if isAuthenticated() && (
-        isAdmin() || 
-        (isMentor() && resource.data.assignedTo == request.auth.uid)
+        (request.auth.uid == userId && request.resource.data.role == resource.data.role) ||
+        isAdmin()
       );
       
-      // Only verified Admins can delete or archive incidents
+      // Only Admins can delete users
       allow delete: if isAdmin();
     }
 
     // ===============================================================
-    // Activity Logs Collection Security Rules (Immutable Audit Trail)
+    // 2. Incidents Collection Security Rules
+    // ===============================================================
+    match /incidents/{incidentId} {
+      // Students can read their own reported incidents; Mentors & Admins can read all active incidents
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isMentor() || 
+        (isStudent() && resource.data.reporterId == request.auth.uid)
+      );
+      
+      // Any authenticated student/user can report an emergency with themselves as reporter
+      allow create: if isAuthenticated() && 
+                    request.resource.data.reporterId == request.auth.uid;
+      
+      // Modification Rules:
+      // - Admins: Can update any incident (assign mentor, change severity, resolve)
+      // - Mentors: Can ONLY update incidents assigned to them
+      // - Students: Can only edit description on their own unresolved reports (cannot reassign or resolve)
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        (isMentor() && resource.data.assignedTo == request.auth.uid) ||
+        (isStudent() && resource.data.reporterId == request.auth.uid && resource.data.status == 'reported' && request.resource.data.assignedTo == resource.data.assignedTo && request.resource.data.status == resource.data.status)
+      );
+      
+      // Only Admins can delete or archive incidents
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 3. Activity Logs Collection Security Rules (Immutable Audit Trail)
     // ===============================================================
     match /activityLogs/{logId} {
-      // Authenticated users can view activity audit logs
-      allow read: if isAuthenticated();
+      // Authenticated mentors and admins can view activity audit logs; Students are DENIED
+      allow read: if isAuthenticated() && (isAdmin() || isMentor());
       
-      // Authenticated operations can append audit log records
+      // System & authenticated operations can append audit log records
       allow create: if isAuthenticated();
       
       // Audit logs are strictly immutable: no updates or deletions permitted

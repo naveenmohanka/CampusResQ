@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:rules": "node scripts/test-rules.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -20,6 +21,7 @@
     "tailwind-merge": "^2.5.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
