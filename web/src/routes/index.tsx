@@ -4,6 +4,7 @@ import { Dashboard } from '../pages/Dashboard/Dashboard';
 import { IncidentsPage } from '../pages/Incidents/Incidents';
 import { IncidentDetail } from '../pages/Incidents/IncidentDetail';
 import { AnalyticsPage } from '../pages/Analytics/Analytics';
+import { UsersPage } from '../pages/Users/Users';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { ProtectedRoute } from '../components/layout/ProtectedRoute';
 
@@ -39,6 +40,10 @@ export const router = createBrowserRouter([
       {
         path: 'analytics',
         element: <AnalyticsPage />,
+      },
+      {
+        path: 'users',
+        element: <UsersPage />,
       },
     ],
   },

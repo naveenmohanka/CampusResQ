@@ -1,4 +1,5 @@
 import { IncidentStatus, IncidentCategory } from '../types/incident';
+import { UserRole, ResponderApprovalStatus } from '../types/user';
 
 export function getAiSeverityColor(severity: string): {
   bg: string;
@@ -134,5 +135,73 @@ export function formatStatus(status: IncidentStatus | string): string {
     case 'in_progress': return 'In Progress';
     case 'resolved': return 'Resolved';
     default: return status || 'Unknown';
+  }
+}
+
+export function getRoleColor(role: UserRole | string): string {
+  const lower = (role || 'reporter').toLowerCase();
+  switch (lower) {
+    case 'admin':
+      return 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30';
+    case 'responder':
+    case 'mentor':
+      return 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30';
+    case 'reporter':
+    case 'student':
+    default:
+      return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+  }
+}
+
+export function formatRole(role: UserRole | string): string {
+  const lower = (role || 'reporter').toLowerCase();
+  switch (lower) {
+    case 'admin': return 'Admin';
+    case 'responder':
+    case 'mentor': return 'Responder';
+    case 'reporter':
+    case 'student': return 'Reporter';
+    default: return role || 'User';
+  }
+}
+
+export function getResponderApprovalColor(status?: ResponderApprovalStatus | string): {
+  badge: string;
+  dot: string;
+} {
+  const lower = (status || 'not_requested').toLowerCase();
+  switch (lower) {
+    case 'approved':
+      return {
+        badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-semibold',
+        dot: 'bg-emerald-500',
+      };
+    case 'pending':
+      return {
+        badge: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/40 font-bold animate-pulse',
+        dot: 'bg-amber-500 animate-ping',
+      };
+    case 'rejected':
+      return {
+        badge: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30',
+        dot: 'bg-rose-500',
+      };
+    case 'not_requested':
+    default:
+      return {
+        badge: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+        dot: 'bg-slate-400',
+      };
+  }
+}
+
+export function formatApprovalStatus(status?: ResponderApprovalStatus | string): string {
+  const lower = (status || 'not_requested').toLowerCase();
+  switch (lower) {
+    case 'approved': return 'Approved Responder';
+    case 'pending': return 'Pending Approval';
+    case 'rejected': return 'Rejected';
+    case 'not_requested': return 'Not Requested';
+    default: return status || 'N/A';
   }
 }

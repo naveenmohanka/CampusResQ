@@ -6,6 +6,10 @@ export type ActivityAction =
   | 'COMMENT_ADDED'
   | 'INCIDENT_RESOLVED'
   | 'USER_ROLE_CHANGED'
+  | 'USER_ROLE_UPDATED'
+  | 'USER_STATUS_UPDATED'
+  | 'USER_CREATED'
+  | 'USER_DELETED'
   | 'SYSTEM_ALERT';
 
 export interface ActivityLog {
@@ -15,6 +19,7 @@ export interface ActivityLog {
   performedBy: string;
   performedByName: string;
   performedByRole: string;
+  targetUserId?: string;
   details: string;
   timestamp: string;
   metadata?: Record<string, any>;

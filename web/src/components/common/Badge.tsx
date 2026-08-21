@@ -1,7 +1,16 @@
 import React from 'react';
 import { IncidentStatus, IncidentCategory } from '../../types/incident';
-import { UserRole } from '../../types/user';
-import { getAiSeverityColor, getStatusColor, formatStatus, getCategoryColor } from '../../utils/formatters';
+import { UserRole, ResponderApprovalStatus } from '../../types/user';
+import {
+  getAiSeverityColor,
+  getStatusColor,
+  formatStatus,
+  getCategoryColor,
+  getRoleColor,
+  formatRole,
+  getResponderApprovalColor,
+  formatApprovalStatus
+} from '../../utils/formatters';
 
 export const AiSeverityBadge: React.FC<{
   severity: string;
@@ -51,9 +60,23 @@ export const CategoryBadge: React.FC<{ category: IncidentCategory | string }> = 
 };
 
 export const RoleBadge: React.FC<{ role: UserRole | string }> = ({ role }) => {
+  const color = getRoleColor(role);
   return (
-    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize border bg-slate-800 text-teal-300 border-slate-700">
-      {role}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold uppercase tracking-wider border ${color}`}>
+      {formatRole(role)}
+    </span>
+  );
+};
+
+export const ResponderApprovalBadge: React.FC<{
+  status?: ResponderApprovalStatus | string;
+  showDot?: boolean;
+}> = ({ status, showDot = true }) => {
+  const colors = getResponderApprovalColor(status);
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs border ${colors.badge}`}>
+      {showDot && <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />}
+      {formatApprovalStatus(status)}
     </span>
   );
 };

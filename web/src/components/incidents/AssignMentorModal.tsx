@@ -4,7 +4,7 @@ import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
 import { Incident } from '../../types/incident';
 import { UserProfile } from '../../types/user';
-import { getMentors } from '../../services/userService';
+import { getResponders } from '../../services/userService';
 import { assignMentorToIncident } from '../../services/incidentService';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotification } from '../../context/NotificationContext';
@@ -24,47 +24,47 @@ export const AssignMentorModal: React.FC<AssignMentorModalProps> = ({
 }) => {
   const { user } = useAuth();
   const { showToast } = useNotification();
-  const [mentors, setMentors] = useState<UserProfile[]>([]);
-  const [selectedMentorId, setSelectedMentorId] = useState<string>('');
+  const [responders, setResponders] = useState<UserProfile[]>([]);
+  const [selectedResponderId, setSelectedResponderId] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [fetchingMentors, setFetchingMentors] = useState(false);
+  const [fetching, setFetching] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setFetchingMentors(true);
-      getMentors()
+      setFetching(true);
+      getResponders()
         .then((data) => {
-          setMentors(data);
+          setResponders(data);
           if (data.length > 0) {
-            setSelectedMentorId(incident?.assignedTo || data[0].id);
+            setSelectedResponderId(incident?.assignedTo || data[0].id);
           }
         })
-        .finally(() => setFetchingMentors(false));
+        .finally(() => setFetching(false));
     }
   }, [isOpen, incident]);
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!incident || !selectedMentorId || !user) return;
+    if (!incident || !selectedResponderId || !user) return;
 
-    const mentor = mentors.find((m) => m.id === selectedMentorId);
-    if (!mentor) return;
+    const responder = responders.find((m) => m.id === selectedResponderId);
+    if (!responder) return;
 
     try {
       setLoading(true);
       await assignMentorToIncident(
         incident.id,
-        mentor.id,
-        mentor.name,
-        mentor.email,
+        responder.id,
+        responder.name,
+        responder.email,
         user.id,
         user.name
       );
 
       showToast({
         type: 'success',
-        title: 'Mentor Assigned',
-        message: `Successfully assigned ${mentor.name} to incident "${incident.title}".`,
+        title: 'Responder Assigned',
+        message: `Successfully assigned ${responder.name} to incident "${incident.title}".`,
       });
 
       if (onSuccess) onSuccess();
@@ -73,7 +73,7 @@ export const AssignMentorModal: React.FC<AssignMentorModalProps> = ({
       showToast({
         type: 'error',
         title: 'Assignment Failed',
-        message: err.message || 'Could not assign mentor.',
+        message: err.message || 'Could not assign response team member.',
       });
     } finally {
       setLoading(false);
@@ -81,61 +81,61 @@ export const AssignMentorModal: React.FC<AssignMentorModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Assign Faculty / Security Mentor">
+    <Modal isOpen={isOpen} onClose={onClose} title="Assign Response Team Member / Responder">
       <form onSubmit={handleAssign} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1">
+          <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase mb-1">
             Target Incident
           </label>
-          <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl">
-            <p className="text-sm font-semibold text-white truncate">{incident?.title}</p>
-            <p className="text-xs text-teal-400 font-mono mt-0.5">ID: {incident?.id}</p>
+          <div className="p-3 bg-[var(--bg-subtle)] border border-[var(--border-color)] rounded-xl">
+            <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{incident?.title}</p>
+            <p className="text-xs text-violet-600 dark:text-violet-400 font-mono mt-0.5">ID: #{incident?.id}</p>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1">
-            Select Response Mentor
+          <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase mb-1">
+            Select Authorized Responder
           </label>
-          {fetchingMentors ? (
-            <div className="p-3 text-xs text-slate-400 animate-pulse">Loading mentors list...</div>
-          ) : mentors.length === 0 ? (
-            <div className="p-3 text-xs text-amber-400 bg-amber-500/10 rounded-xl border border-amber-500/20">
-              No mentors registered yet. You can change user roles in the Users tab.
+          {fetching ? (
+            <div className="p-3 text-xs text-[var(--text-muted)] animate-pulse">Loading responders list...</div>
+          ) : responders.length === 0 ? (
+            <div className="p-3 text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 rounded-xl border border-amber-500/20">
+              No approved responders found. You can approve responder requests in the Users tab.
             </div>
           ) : (
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {mentors.map((m) => (
+              {responders.map((m) => (
                 <label
                   key={m.id}
                   className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                    selectedMentorId === m.id
-                      ? 'bg-teal-500/10 border-teal-500/50 text-white'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800/40'
+                    selectedResponderId === m.id
+                      ? 'bg-violet-500/10 border-violet-500/50 text-[var(--text-primary)]'
+                      : 'bg-[var(--bg-subtle)] border-[var(--border-color)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <input
                       type="radio"
-                      name="mentor"
+                      name="responder"
                       value={m.id}
-                      checked={selectedMentorId === m.id}
-                      onChange={() => setSelectedMentorId(m.id)}
-                      className="text-teal-500 focus:ring-teal-500"
+                      checked={selectedResponderId === m.id}
+                      onChange={() => setSelectedResponderId(m.id)}
+                      className="text-violet-600 focus:ring-violet-500"
                     />
                     <div>
                       <p className="font-semibold text-sm">{m.name}</p>
-                      <p className="text-xs text-slate-400">{m.department || m.email}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{m.department || m.email}</p>
                     </div>
                   </div>
-                  <UserCheck className="w-4 h-4 text-teal-400" />
+                  <UserCheck className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                 </label>
               ))}
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-color)]">
           <Button variant="ghost" type="button" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
@@ -143,7 +143,7 @@ export const AssignMentorModal: React.FC<AssignMentorModalProps> = ({
             variant="primary"
             type="submit"
             loading={loading}
-            disabled={fetchingMentors || mentors.length === 0}
+            disabled={fetching || responders.length === 0}
           >
             Confirm Assignment
           </Button>
