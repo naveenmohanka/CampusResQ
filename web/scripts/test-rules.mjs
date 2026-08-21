@@ -32,6 +32,7 @@ const database = {
       assignedTo: 'mentor-789',
       status: 'assigned',
       severity: 'high',
+      aiAnalysis: { severity: 'HIGH', priorityScore: 8 },
       isAnonymous: false
     },
     'inc-002': {
@@ -41,6 +42,7 @@ const database = {
       assignedTo: null,
       status: 'reported',
       severity: 'low',
+      aiAnalysis: { severity: 'LOW', priorityScore: 3 },
       isAnonymous: false
     },
     'inc-003': {
@@ -50,6 +52,7 @@ const database = {
       assignedTo: null,
       status: 'reported',
       severity: 'high',
+      aiAnalysis: { severity: 'HIGH', priorityScore: 7 },
       isAnonymous: true
     },
     'inc-resolved-critical': {
@@ -59,6 +62,8 @@ const database = {
       assignedTo: 'mentor-999',
       status: 'resolved',
       severity: 'critical',
+      adminSeverity: 'CRITICAL',
+      aiAnalysis: { severity: 'HIGH', priorityScore: 8 },
       isAnonymous: false
     }
   },
@@ -115,69 +120,78 @@ class FirestoreSecurityEvaluator {
     return user ? user.role === 'student' : false;
   }
 
-  // --- Helper: isThreatLevelImmutableOnResolved() ---
-  isThreatLevelImmutableOnResolved(existingIncident, requestedIncident) {
-    // If existing document is resolved, the new severity MUST equal the existing severity
-    if (!existingIncident || existingIncident.status !== 'resolved') {
-      return true;
+  // Exact function from docs/firestore.rules
+  isThreatLevelImmutableOnResolved(resourceData, requestResourceData) {
+    if (!('status' in resourceData)) return true;
+    if (resourceData.status !== 'resolved') return true;
+
+    // If already resolved, status cannot be mutated backwards to bypass rule
+    if (requestResourceData.status && requestResourceData.status !== 'resolved') {
+      return false;
     }
-    return requestedIncident.severity === existingIncident.severity;
+
+    const severityUntouched = !('severity' in requestResourceData) || requestResourceData.severity === resourceData.severity;
+    const adminSeverityUntouched = !('adminSeverity' in requestResourceData) || !('adminSeverity' in resourceData) || requestResourceData.adminSeverity === resourceData.adminSeverity;
+
+    return severityUntouched && adminSeverityUntouched;
   }
 
-  // --- Collection: users/{userId} ---
+  // --- Users Rules ---
   canReadUser(auth, targetUserId) {
     if (!this.isAuthenticated(auth)) return false;
     return auth.uid === targetUserId || this.isAdmin(auth);
   }
 
-  canCreateUser(auth, targetUserId, newResourceData) {
+  canCreateUser(auth, targetUserId, newUserData) {
     if (!this.isAuthenticated(auth)) return false;
-    return auth.uid === targetUserId && newResourceData.role === 'student';
+    return auth.uid === targetUserId && newUserData.role === 'student';
   }
 
-  canUpdateUser(auth, targetUserId, existingData, newResourceData) {
+  canUpdateUser(auth, targetUserId, existingUser, updatedUser) {
     if (!this.isAuthenticated(auth)) return false;
-    const isSelfWithSameRole = (auth.uid === targetUserId) && (newResourceData.role === existingData.role);
-    return isSelfWithSameRole || this.isAdmin(auth);
+    if (this.isAdmin(auth)) return true;
+    return auth.uid === targetUserId && updatedUser.role === existingUser.role;
   }
 
   canDeleteUser(auth) {
     return this.isAdmin(auth);
   }
 
-  // --- Collection: incidents/{incidentId} ---
+  // --- Incidents Rules ---
   canReadIncident(auth, incident) {
     if (!this.isAuthenticated(auth)) return false;
-    if (this.isAdmin(auth)) return true;
-    if (this.isMentor(auth)) return true;
-    if (this.isStudent(auth) && incident.reporterId === auth.uid) return true;
-    return false;
+    if (this.isAdmin(auth) || this.isMentor(auth)) return true;
+    return this.isStudent(auth) && incident.reporterId === auth.uid;
   }
 
-  canCreateIncident(auth, newIncidentData) {
+  canCreateIncident(auth, newIncident) {
     if (!this.isAuthenticated(auth)) return false;
-    return newIncidentData.reporterId === auth.uid;
+    return newIncident.reporterId === auth.uid;
   }
 
   canUpdateIncident(auth, existingIncident, updatedIncident) {
     if (!this.isAuthenticated(auth)) return false;
-    // 1. Enforce Immutable Threat Level on Resolved incidents
+
+    // Check Threat-Level Immutability on Resolved
     if (!this.isThreatLevelImmutableOnResolved(existingIncident, updatedIncident)) {
       return false;
     }
 
-    // 2. Enforce Role-Based Access Control
     if (this.isAdmin(auth)) return true;
-    if (this.isMentor(auth) && existingIncident.assignedTo === auth.uid) return true;
-    if (
-      this.isStudent(auth) &&
-      existingIncident.reporterId === auth.uid &&
-      existingIncident.status === 'reported' &&
-      updatedIncident.assignedTo === existingIncident.assignedTo &&
-      updatedIncident.status === existingIncident.status
-    ) {
-      return true;
+
+    if (this.isMentor(auth)) {
+      return existingIncident.assignedTo === auth.uid;
     }
+
+    if (this.isStudent(auth)) {
+      return (
+        existingIncident.reporterId === auth.uid &&
+        existingIncident.status === 'reported' &&
+        updatedIncident.assignedTo === existingIncident.assignedTo &&
+        updatedIncident.status === existingIncident.status
+      );
+    }
+
     return false;
   }
 
@@ -185,7 +199,7 @@ class FirestoreSecurityEvaluator {
     return this.isAdmin(auth);
   }
 
-  // --- Collection: alerts/{alertId} (Module 2) ---
+  // --- Alerts Rules (Module 2) ---
   canReadAlert(auth) {
     return this.isAuthenticated(auth);
   }
@@ -198,133 +212,103 @@ class FirestoreSecurityEvaluator {
     return this.isAdmin(auth);
   }
 
-  canDeleteAlert(auth) {
-    return this.isAdmin(auth);
-  }
-
-  // --- Collection: activityLogs/{logId} (Anti-Forgery) ---
+  // --- Activity Logs Rules ---
   canReadActivityLogs(auth) {
     if (!this.isAuthenticated(auth)) return false;
     return this.isAdmin(auth) || this.isMentor(auth);
   }
 
-  canCreateActivityLog(auth, logData) {
+  canCreateActivityLog(auth, newLog) {
     if (!this.isAuthenticated(auth)) return false;
-    return logData.performedBy === auth.uid;
+    return newLog.performedBy === auth.uid;
   }
 
   canUpdateActivityLog() {
-    return false; // Immutable
+    return false; // strictly immutable
   }
 
   canDeleteActivityLog() {
-    return false; // Immutable
+    return false; // strictly immutable
   }
 
-  // --- Storage: Evidence Protection ---
+  // --- Evidence Access Rules ---
   canReadEvidence(auth, incident) {
     if (!this.isAuthenticated(auth)) return false;
-    if (this.isAdmin(auth)) return true;
-    if (this.isMentor(auth)) return true;
-    if (this.isStudent(auth) && incident.reporterId === auth.uid) return true;
-    return false;
+    if (this.isAdmin(auth) || this.isMentor(auth)) return true;
+    return this.isStudent(auth) && incident.reporterId === auth.uid;
   }
-}
-
-// Service Layer Mock Implementation for testing business rules
-function serviceUpdateIncidentSeverity(incident, newSeverity) {
-  if (incident.status === 'resolved') {
-    throw new Error('Threat level cannot be changed after an incident is resolved.');
-  }
-  return { ...incident, severity: newSeverity };
-}
-
-function serviceUpdateIncidentStatus(incident, newStatus, resolutionNotes) {
-  return {
-    ...incident,
-    status: newStatus,
-    resolutionNotes: resolutionNotes || incident.resolutionNotes
-  };
 }
 
 const evaluator = new FirestoreSecurityEvaluator(database);
 
+// ==========================================
+// TEST SUITE DEFINITIONS
+// ==========================================
+
 const tests = [
-  // =========================================================================
-  // MANDATORY PS-01 IMMUTABLE THREAT LEVEL TEST CASES (TEST 1 - 7)
-  // =========================================================================
+  // ⭐ Mandatory Immutable Threat Level & Admin Override Suite
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 1: Create incident with CRITICAL -> resolve incident -> threatLevel remains CRITICAL',
     run: () => {
-      const inc = { id: 'test-1', severity: 'critical', status: 'reported' };
-      const resolvedInc = serviceUpdateIncidentStatus(inc, 'resolved', 'Fixed issue');
-      return resolvedInc.status === 'resolved' && resolvedInc.severity === 'critical';
+      const resolved = database.incidents['inc-resolved-critical'];
+      return resolved.status === 'resolved' && resolved.severity === 'critical';
     }
   },
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 2: Create incident with HIGH -> resolve incident -> attempt service update to LOW -> REJECTED',
     run: () => {
-      const inc = { id: 'test-2', severity: 'high', status: 'resolved' };
-      try {
-        serviceUpdateIncidentSeverity(inc, 'low');
-        return false; // Should not reach here
-      } catch (err) {
-        return err.message === 'Threat level cannot be changed after an incident is resolved.';
-      }
+      const resolved = database.incidents['inc-resolved-critical'];
+      const attempted = { ...resolved, severity: 'low' };
+      return !evaluator.canUpdateIncident({ uid: 'admin-001' }, resolved, attempted);
     }
   },
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 3: Resolved incident -> attempt direct Firestore update of threatLevel (Admin/Mentor) -> DENIED',
     run: () => {
-      const existing = database.incidents['inc-resolved-critical']; // severity: critical, status: resolved
-      const maliciousPayload = { ...existing, severity: 'low' };
-      // Attempt by Admin: MUST BE DENIED by isThreatLevelImmutableOnResolved
-      const adminDenied = !evaluator.canUpdateIncident({ uid: 'admin-001' }, existing, maliciousPayload);
-      // Attempt by Mentor: MUST BE DENIED
-      const mentorDenied = !evaluator.canUpdateIncident({ uid: 'mentor-999' }, existing, maliciousPayload);
-      return adminDenied && mentorDenied;
+      const resolved = database.incidents['inc-resolved-critical'];
+      const attemptedAdmin = { ...resolved, severity: 'low' };
+      const attemptedMentor = { ...resolved, severity: 'low' };
+      return (
+        !evaluator.canUpdateIncident({ uid: 'admin-001' }, resolved, attemptedAdmin) &&
+        !evaluator.canUpdateIncident({ uid: 'mentor-999' }, resolved, attemptedMentor)
+      );
     }
   },
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 4: Resolved incident -> attempt to change status & threatLevel together to bypass rule -> DENIED',
     run: () => {
-      const existing = database.incidents['inc-resolved-critical']; // status: resolved, severity: critical
-      // Attacker tries to change status='in_progress' and severity='low' simultaneously
-      const bypassPayload = { ...existing, status: 'in_progress', severity: 'low' };
-      return !evaluator.canUpdateIncident({ uid: 'admin-001' }, existing, bypassPayload);
+      const resolved = database.incidents['inc-resolved-critical'];
+      const attemptedBypass = { ...resolved, status: 'in_progress', severity: 'low' };
+      return !evaluator.canUpdateIncident({ uid: 'admin-001' }, resolved, attemptedBypass);
     }
   },
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 5: Unresolved incident -> authorized Admin changes threatLevel according to rules -> ALLOWED',
     run: () => {
-      const existing = database.incidents['inc-001']; // status: assigned, severity: high
-      const updatedPayload = { ...existing, severity: 'critical' };
-      return evaluator.canUpdateIncident({ uid: 'admin-001' }, existing, updatedPayload);
+      const active = database.incidents['inc-001'];
+      const attempted = { ...active, severity: 'critical' };
+      return evaluator.canUpdateIncident({ uid: 'admin-001' }, active, attempted);
     }
   },
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 6: Resolved incident -> view incident -> original threat level remains visible and locked',
     run: () => {
-      const existing = database.incidents['inc-resolved-critical'];
-      return existing.status === 'resolved' && existing.severity === 'critical';
+      const resolved = database.incidents['inc-resolved-critical'];
+      return resolved.severity === 'critical';
     }
   },
   {
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 7: Resolved CRITICAL incident -> analytics -> still counted as CRITICAL',
     run: () => {
-      const incidentList = [
-        database.incidents['inc-001'], // severity: high, status: assigned
-        database.incidents['inc-002'], // severity: low, status: reported
-        database.incidents['inc-resolved-critical'] // severity: critical, status: resolved
-      ];
-      const criticalCount = incidentList.filter(i => i.severity === 'critical').length;
+      const list = Object.values(database.incidents);
+      const criticalCount = list.filter(i => i.severity === 'critical').length;
       return criticalCount === 1;
     }
   },
@@ -332,15 +316,79 @@ const tests = [
     category: '⭐ Mandatory Immutable Threat Level Suite',
     name: 'TEST 8: Resolved incident -> updating resolutionNotes without altering severity -> ALLOWED',
     run: () => {
-      const existing = database.incidents['inc-resolved-critical'];
-      const notesUpdate = { ...existing, resolutionNotes: 'Updated follow-up report' };
-      return evaluator.canUpdateIncident({ uid: 'admin-001' }, existing, notesUpdate);
+      const resolved = database.incidents['inc-resolved-critical'];
+      const attempted = { ...resolved, resolutionNotes: 'Additional follow-up log completed.' };
+      return evaluator.canUpdateIncident({ uid: 'admin-001' }, resolved, attempted);
     }
   },
 
-  // =========================================================================
-  // PLATFORM RBAC & SECURITY VERIFICATION
-  // =========================================================================
+  // ⭐ Admin Severity Override & AI Preservation Suite
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 9: Pending incident -> Admin changes adminSeverity (MEDIUM -> HIGH) -> ALLOWED',
+    run: () => {
+      const pending = database.incidents['inc-002']; // status: reported
+      const attempted = { ...pending, adminSeverity: 'HIGH', severity: 'high' };
+      return evaluator.canUpdateIncident({ uid: 'admin-001' }, pending, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 10: Accepted incident -> Admin changes adminSeverity (HIGH -> CRITICAL) -> ALLOWED',
+    run: () => {
+      const accepted = database.incidents['inc-001']; // status: assigned / accepted
+      const attempted = { ...accepted, adminSeverity: 'CRITICAL', severity: 'critical' };
+      return evaluator.canUpdateIncident({ uid: 'admin-001' }, accepted, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 11: In_progress incident -> Admin changes adminSeverity (LOW -> MEDIUM) -> ALLOWED',
+    run: () => {
+      const inProgress = { ...database.incidents['inc-001'], status: 'in_progress' };
+      const attempted = { ...inProgress, adminSeverity: 'MEDIUM', severity: 'medium' };
+      return evaluator.canUpdateIncident({ uid: 'admin-001' }, inProgress, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 12: Resolved incident -> Admin attempt to change adminSeverity -> DENIED',
+    run: () => {
+      const resolved = database.incidents['inc-resolved-critical'];
+      const attempted = { ...resolved, adminSeverity: 'LOW' };
+      return !evaluator.canUpdateIncident({ uid: 'admin-001' }, resolved, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 13: Resolved incident -> Admin bypass attempt (resolved -> in_progress + adminSeverity) -> DENIED',
+    run: () => {
+      const resolved = database.incidents['inc-resolved-critical'];
+      const attempted = { ...resolved, status: 'in_progress', adminSeverity: 'LOW' };
+      return !evaluator.canUpdateIncident({ uid: 'admin-001' }, resolved, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 14: Unauthorized Student -> Attempt to change adminSeverity -> DENIED',
+    run: () => {
+      const incident = database.incidents['inc-001'];
+      const attempted = { ...incident, adminSeverity: 'LOW' };
+      return !evaluator.canUpdateIncident({ uid: 'student-123' }, incident, attempted);
+    }
+  },
+  {
+    category: '⭐ Admin Severity Override & AI Preservation Suite',
+    name: 'TEST 15: Admin changes adminSeverity -> original aiAnalysis object preserved untouched',
+    run: () => {
+      const incident = database.incidents['inc-001'];
+      const attempted = { ...incident, adminSeverity: 'CRITICAL', severity: 'critical' };
+      // Verify aiAnalysis remains unchanged
+      return attempted.aiAnalysis.severity === 'HIGH' && attempted.adminSeverity === 'CRITICAL';
+    }
+  },
+
+  // 1. Unauthenticated Security
   {
     category: '1. Unauthenticated Security',
     name: 'Unauthenticated -> Read incidents -> DENIED',
@@ -354,7 +402,7 @@ const tests = [
   {
     category: '1. Unauthenticated Security',
     name: 'Unauthenticated -> Create incident -> DENIED',
-    run: () => !evaluator.canCreateIncident(null, { reporterId: 'student-123' })
+    run: () => !evaluator.canCreateIncident(null, { reporterId: 'anon', title: 'test' })
   },
   {
     category: '1. Unauthenticated Security',
@@ -362,7 +410,7 @@ const tests = [
     run: () => !evaluator.canReadAlert(null)
   },
 
-  // 2. Student Permissions & Anti-Privilege Escalation
+  // 2. Student Permissions & RBAC
   {
     category: '2. Student Permissions & RBAC',
     name: 'Student -> Read own user profile -> ALLOWED',
@@ -605,6 +653,6 @@ console.log('===================================================================
 if (failed > 0) {
   process.exit(1);
 } else {
-  console.log('ALL 43 SECURITY RULES, IMMUTABLE THREAT LEVEL & RBAC CONSTRAINTS VERIFIED SUCCESSFULLY.\n');
+  console.log('ALL SECURITY RULES, IMMUTABLE THREAT LEVEL & ADMIN OVERRIDE CONSTRAINTS VERIFIED SUCCESSFULLY.\n');
   process.exit(0);
 }

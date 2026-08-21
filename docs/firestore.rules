@@ -28,12 +28,13 @@ service cloud.firestore {
     }
 
     // Helper: Immutable Threat Level Enforcement
-    // Once an incident reaches status == 'resolved', its severity (threat level) CANNOT be modified
+    // Once an incident reaches status == 'resolved', its severity and adminSeverity CANNOT be modified
     // even by Admins or Mentors. Status and Severity must also not be changed simultaneously to bypass this.
     function isThreatLevelImmutableOnResolved() {
       return !('status' in resource.data) || 
              resource.data.status != 'resolved' || 
-             request.resource.data.severity == resource.data.severity;
+             ((!('severity' in request.resource.data) || request.resource.data.severity == resource.data.severity) &&
+              (!('adminSeverity' in request.resource.data) || !('adminSeverity' in resource.data) || request.resource.data.adminSeverity == resource.data.adminSeverity));
     }
 
     // ===============================================================
@@ -77,8 +78,8 @@ service cloud.firestore {
                     request.resource.data.reporterId == request.auth.uid;
       
       // Modification Rules:
-      // - IMMUTABILITY: If status == 'resolved', severity cannot be changed (isThreatLevelImmutableOnResolved())
-      // - Admins: Can update incident fields (assign mentor, change severity if not resolved, resolve)
+      // - IMMUTABILITY: If status == 'resolved', severity and adminSeverity cannot be changed (isThreatLevelImmutableOnResolved())
+      // - Admins: Can update incident fields (assign mentor, change adminSeverity if not resolved, resolve)
       // - Mentors: Can ONLY update incidents assigned to them
       // - Students: Can only edit description on their own unresolved reports (cannot reassign or resolve)
       allow update: if isAuthenticated() && isThreatLevelImmutableOnResolved() && (

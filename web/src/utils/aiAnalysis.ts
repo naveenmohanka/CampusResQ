@@ -57,7 +57,38 @@ export function parseAiAnalysis(raw: any): AiAnalysis | null {
 }
 
 /**
- * Extracts normalized AI severity from an incident, falling back gracefully.
+ * Calculates the EFFECTIVE SEVERITY used by the dashboard.
+ * - If adminSeverity is set (Admin human override), returns adminSeverity.
+ * - Otherwise returns the original AI analysis severity (or initial incident severity).
+ * - Original aiAnalysis is NEVER overwritten.
+ */
+export function getEffectiveSeverity(incident: {
+  adminSeverity?: string | null;
+  aiAnalysis?: any;
+  severity?: string;
+}): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
+  if (incident.adminSeverity) {
+    const upperAdmin = incident.adminSeverity.toUpperCase().trim();
+    if (upperAdmin === 'CRITICAL' || upperAdmin === 'HIGH' || upperAdmin === 'MEDIUM' || upperAdmin === 'LOW') {
+      return upperAdmin as any;
+    }
+  }
+
+  const parsedAi = parseAiAnalysis(incident.aiAnalysis);
+  if (parsedAi?.severity) return parsedAi.severity;
+
+  if (incident.severity) {
+    const upper = incident.severity.toUpperCase().trim();
+    if (upper === 'CRITICAL' || upper === 'HIGH' || upper === 'MEDIUM' || upper === 'LOW') {
+      return upper as any;
+    }
+  }
+
+  return 'MEDIUM';
+}
+
+/**
+ * Extracts ONLY the original AI-generated severity for audit/transparency.
  */
 export function getIncidentAiSeverity(incident: { aiAnalysis?: any; severity?: string }): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
   const parsed = parseAiAnalysis(incident.aiAnalysis);
@@ -74,7 +105,7 @@ export function getIncidentAiSeverity(incident: { aiAnalysis?: any; severity?: s
 }
 
 /**
- * Checks if incident has a critical immediate response flag.
+ * Checks if incident has a critical immediate response flag from AI.
  */
 export function isImmediateResponseRequired(incident: { aiAnalysis?: any }): boolean {
   const parsed = parseAiAnalysis(incident.aiAnalysis);

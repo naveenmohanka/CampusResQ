@@ -11,7 +11,7 @@ import {
 import { db, isFirebaseConfigured } from './firebase/config';
 import { Incident, IncidentFilters, IncidentStats } from '../types/incident';
 import { INITIAL_INCIDENTS } from './mockData';
-import { getIncidentAiSeverity, parseAiAnalysis } from '../utils/aiAnalysis';
+import { getEffectiveSeverity, parseAiAnalysis } from '../utils/aiAnalysis';
 
 let localIncidents: Incident[] = [...INITIAL_INCIDENTS];
 const incidentListeners: Set<(incidents: Incident[]) => void> = new Set();
@@ -32,8 +32,8 @@ export function calculateIncidentStats(incidents: Incident[]): IncidentStats {
       resolved++;
     }
 
-    const aiSev = getIncidentAiSeverity(inc);
-    if (aiSev === 'CRITICAL' || aiSev === 'HIGH') {
+    const effSev = getEffectiveSeverity(inc);
+    if (effSev === 'CRITICAL' || effSev === 'HIGH') {
       criticalHigh++;
     }
   });
@@ -68,6 +68,9 @@ export function subscribeToIncidents(
               description: data.description || '',
               category: data.category || 'other',
               severity: data.severity,
+              adminSeverity: data.adminSeverity || null,
+              adminSeverityChangedBy: data.adminSeverityChangedBy || null,
+              adminSeverityChangedAt: data.adminSeverityChangedAt?.toDate ? data.adminSeverityChangedAt.toDate().toISOString() : data.adminSeverityChangedAt,
               status: data.status || 'pending',
               location: data.location || 'Main Campus',
               reporterId: data.reporterId || '',
@@ -132,6 +135,9 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
           description: data.description || '',
           category: data.category || 'other',
           severity: data.severity,
+          adminSeverity: data.adminSeverity || null,
+          adminSeverityChangedBy: data.adminSeverityChangedBy || null,
+          adminSeverityChangedAt: data.adminSeverityChangedAt?.toDate ? data.adminSeverityChangedAt.toDate().toISOString() : data.adminSeverityChangedAt,
           status: data.status || 'pending',
           location: data.location || 'Main Campus',
           reporterId: data.reporterId || '',
@@ -161,6 +167,55 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
 
   const found = localIncidents.find((inc) => inc.id === id);
   return found || null;
+}
+
+/**
+ * Admin Severity Override:
+ * - Allowed ONLY when status is 'pending', 'accepted', or 'in_progress'.
+ * - FORBIDDEN when status is 'resolved' (Strict permanent lock).
+ * - Leaves original aiAnalysis untouched.
+ */
+export async function updateIncidentAdminSeverity(
+  incidentId: string,
+  newSeverity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+  adminId?: string,
+  adminName?: string
+): Promise<void> {
+  const target = await getIncidentById(incidentId);
+  if (!target) throw new Error('Incident not found');
+
+  const currentStatus = (target.status || 'pending').toLowerCase();
+  if (currentStatus === 'resolved') {
+    throw new Error('Threat level cannot be changed after an incident is resolved.');
+  }
+
+  const normalizedSeverity = newSeverity.toUpperCase().trim() as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+  if (isFirebaseConfigured && db) {
+    const docRef = doc(db, 'incidents', incidentId);
+    await updateDoc(docRef, {
+      adminSeverity: normalizedSeverity,
+      severity: normalizedSeverity.toLowerCase(),
+      adminSeverityChangedBy: adminName || adminId || 'Administrator',
+      adminSeverityChangedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  localIncidents = localIncidents.map((inc) =>
+    inc.id === incidentId
+      ? {
+          ...inc,
+          adminSeverity: normalizedSeverity,
+          severity: normalizedSeverity.toLowerCase() as any,
+          adminSeverityChangedBy: adminName || adminId || 'Administrator',
+          adminSeverityChangedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      : inc
+  );
+  notifyListeners();
 }
 
 export async function assignMentorToIncident(
@@ -252,28 +307,7 @@ export async function updateIncidentSeverity(
   incidentId: string,
   severity: any
 ): Promise<void> {
-  const target = await getIncidentById(incidentId);
-  if (!target) throw new Error('Incident not found');
-
-  if ((target.status || '').toLowerCase() === 'resolved') {
-    throw new Error('Threat level cannot be changed after an incident is resolved.');
-  }
-
-  if (isFirebaseConfigured && db) {
-    const docRef = doc(db, 'incidents', incidentId);
-    await updateDoc(docRef, {
-      severity,
-      updatedAt: serverTimestamp(),
-    });
-    return;
-  }
-
-  localIncidents = localIncidents.map((inc) =>
-    inc.id === incidentId
-      ? { ...inc, severity, updatedAt: new Date().toISOString() }
-      : inc
-  );
-  notifyListeners();
+  return updateIncidentAdminSeverity(incidentId, severity.toUpperCase());
 }
 
 function notifyListeners() {
@@ -299,10 +333,10 @@ function applyFilters(incidents: Incident[], filters?: IncidentFilters): Inciden
       }
     }
 
-    // AI Severity filter
+    // AI / Effective Severity filter
     if (filters.aiSeverity && filters.aiSeverity !== 'all') {
-      const aiSev = getIncidentAiSeverity(inc);
-      if (aiSev !== filters.aiSeverity) return false;
+      const effSev = getEffectiveSeverity(inc);
+      if (effSev !== filters.aiSeverity) return false;
     }
 
     // Category filter
@@ -331,12 +365,12 @@ function applyFilters(incidents: Incident[], filters?: IncidentFilters): Inciden
 
   // Sorting
   if (filters.sortBy === 'priority') {
-    const scoreMap = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, UNKNOWN: 0 };
+    const scoreMap = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
     result = [...result].sort((a, b) => {
       const aParsed = parseAiAnalysis(a.aiAnalysis);
       const bParsed = parseAiAnalysis(b.aiAnalysis);
-      const aScore = aParsed?.priorityScore ?? (scoreMap[getIncidentAiSeverity(a)] * 2);
-      const bScore = bParsed?.priorityScore ?? (scoreMap[getIncidentAiSeverity(b)] * 2);
+      const aScore = aParsed?.priorityScore ?? (scoreMap[getEffectiveSeverity(a)] * 2);
+      const bScore = bParsed?.priorityScore ?? (scoreMap[getEffectiveSeverity(b)] * 2);
       if (bScore !== aScore) {
         return bScore - aScore;
       }

@@ -4,7 +4,7 @@ import { MapPin, ChevronRight, Zap } from 'lucide-react';
 import { Incident } from '../../types/incident';
 import { AiSeverityBadge, StatusBadge, CategoryBadge } from '../common/Badge';
 import { formatTimeAgo, formatDate } from '../../utils/dateUtils';
-import { formatLocationString, getIncidentAiSeverity, isImmediateResponseRequired, parseAiAnalysis } from '../../utils/aiAnalysis';
+import { formatLocationString, getEffectiveSeverity, isImmediateResponseRequired, parseAiAnalysis } from '../../utils/aiAnalysis';
 
 interface IncidentTableProps {
   incidents: Incident[];
@@ -22,7 +22,7 @@ export const IncidentTable: React.FC<IncidentTableProps> = ({ incidents }) => {
               <th className="py-4 px-6">Incident</th>
               <th className="py-4 px-4">Category</th>
               <th className="py-4 px-4">Location</th>
-              <th className="py-4 px-4">AI Severity / Priority</th>
+              <th className="py-4 px-4">Effective Severity</th>
               <th className="py-4 px-4">Status</th>
               <th className="py-4 px-6 text-right">Created</th>
             </tr>
@@ -30,7 +30,7 @@ export const IncidentTable: React.FC<IncidentTableProps> = ({ incidents }) => {
           <tbody className="divide-y divide-slate-800/60 text-sm">
             {incidents.map((incident) => {
               const ai = parseAiAnalysis(incident.aiAnalysis);
-              const aiSeverity = getIncidentAiSeverity(incident);
+              const effSeverity = getEffectiveSeverity(incident);
               const immediate = isImmediateResponseRequired(incident);
 
               return (
@@ -50,6 +50,11 @@ export const IncidentTable: React.FC<IncidentTableProps> = ({ incidents }) => {
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-950 text-red-300 border border-red-600 animate-pulse">
                             <Zap className="w-2.5 h-2.5 text-red-400" />
                             IMMEDIATE
+                          </span>
+                        )}
+                        {incident.adminSeverity && (
+                          <span className="text-[10px] text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/40 font-mono">
+                            OVERRIDDEN
                           </span>
                         )}
                       </div>
@@ -75,11 +80,11 @@ export const IncidentTable: React.FC<IncidentTableProps> = ({ incidents }) => {
                     </div>
                   </td>
 
-                  {/* 4. AI Severity & Priority */}
+                  {/* 4. AI / Effective Severity & Priority */}
                   <td className="py-4 px-4 whitespace-nowrap">
                     <div className="space-y-1">
                       <AiSeverityBadge
-                        severity={aiSeverity}
+                        severity={effSeverity}
                         requiresImmediateResponse={immediate}
                       />
                       {ai?.priorityScore !== undefined && (

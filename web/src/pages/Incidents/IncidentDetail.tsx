@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getIncidentById } from '../../services/incidentService';
+import { getIncidentById, updateIncidentAdminSeverity } from '../../services/incidentService';
 import { Incident } from '../../types/incident';
 import { AiSeverityBadge, StatusBadge, CategoryBadge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { IncidentMap } from '../../components/common/IncidentMap';
+import { useAuth } from '../../hooks/useAuth';
+import { useNotification } from '../../context/NotificationContext';
 import {
   ArrowLeft,
   User,
@@ -19,17 +21,27 @@ import {
   MapPin,
   Sparkles,
   AlertTriangle,
+  Sliders,
   Image as ImageIcon
 } from 'lucide-react';
 import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
-import { formatLocationString, getIncidentAiSeverity, isImmediateResponseRequired, parseAiAnalysis } from '../../utils/aiAnalysis';
+import {
+  formatLocationString,
+  getEffectiveSeverity,
+  getIncidentAiSeverity,
+  isImmediateResponseRequired,
+  parseAiAnalysis
+} from '../../utils/aiAnalysis';
 
 export const IncidentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { showToast } = useNotification();
 
   const [incident, setIncident] = useState<Incident | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatingSeverity, setUpdatingSeverity] = useState(false);
   const [activeMedia, setActiveMedia] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,6 +54,47 @@ export const IncidentDetail: React.FC = () => {
     }
     loadIncident();
   }, [id]);
+
+  const handleSeverityChange = async (newSev: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL') => {
+    if (!incident || !id) return;
+    if ((incident.status || '').toLowerCase() === 'resolved') {
+      showToast({
+        type: 'error',
+        title: 'Action Denied',
+        message: 'Severity cannot be changed after an incident is resolved.',
+      });
+      return;
+    }
+
+    try {
+      setUpdatingSeverity(true);
+      await updateIncidentAdminSeverity(id, newSev, user?.id, user?.name);
+      setIncident((prev) =>
+        prev
+          ? {
+              ...prev,
+              adminSeverity: newSev,
+              severity: newSev.toLowerCase() as any,
+              adminSeverityChangedBy: user?.name || 'Administrator',
+              adminSeverityChangedAt: new Date().toISOString(),
+            }
+          : prev
+      );
+      showToast({
+        type: 'success',
+        title: 'Severity Updated',
+        message: `Incident effective severity changed to ${newSev}. AI analysis preserved.`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: err.message || 'Failed to update severity.',
+      });
+    } finally {
+      setUpdatingSeverity(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -67,7 +120,8 @@ export const IncidentDetail: React.FC = () => {
   }
 
   const ai = parseAiAnalysis(incident.aiAnalysis);
-  const aiSeverity = getIncidentAiSeverity(incident);
+  const aiOriginalSeverity = getIncidentAiSeverity(incident);
+  const effectiveSeverity = getEffectiveSeverity(incident);
   const immediate = isImmediateResponseRequired(incident);
   const isResolved = (incident.status || '').toLowerCase() === 'resolved';
 
@@ -125,7 +179,7 @@ export const IncidentDetail: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Details & AI Triage */}
         <div className="lg:col-span-2 space-y-6">
-          {/* AI Analysis Card (Android Source of Truth) */}
+          {/* AI Analysis & Severity Override Card */}
           <div className="glass-panel p-5 rounded-2xl border border-teal-500/30 bg-teal-950/10 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
@@ -134,49 +188,100 @@ export const IncidentDetail: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                    AI Triage & Severity Assessment
+                    AI Triage & Severity Control
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono">
                       Android Contract
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-400">Automated multi-factor priority evaluation</p>
+                  <p className="text-[11px] text-slate-400">AI analysis preserved • Admin severity override enabled</p>
                 </div>
               </div>
 
-              <AiSeverityBadge
-                severity={aiSeverity}
-                requiresImmediateResponse={immediate}
-              />
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400 font-semibold">Effective Severity:</span>
+                <AiSeverityBadge
+                  severity={effectiveSeverity}
+                  requiresImmediateResponse={immediate}
+                />
+              </div>
             </div>
 
-            {ai ? (
-              <div className="space-y-3.5 text-xs">
-                {/* Priority Score & Immediate Response */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-0.5">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase">AI Priority Score</span>
-                    <p className="text-base font-extrabold text-white font-mono">
-                      {ai.priorityScore !== undefined ? `${ai.priorityScore} / 10` : 'N/A'}
-                    </p>
-                  </div>
+            {/* Severity Triage Breakdown Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              {/* 1. AI Generated Severity */}
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Bot className="w-3 h-3 text-teal-400" />
+                  AI Recommended
+                </span>
+                <p className="text-sm font-extrabold text-teal-300 uppercase font-mono">
+                  {aiOriginalSeverity}
+                </p>
+                {ai?.priorityScore !== undefined && (
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Priority Score: {ai.priorityScore}/10
+                  </p>
+                )}
+              </div>
 
-                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-0.5">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase">Immediate Response</span>
-                    <p className={`text-xs font-bold ${ai.requiresImmediateResponse ? 'text-red-400' : 'text-slate-300'}`}>
-                      {ai.requiresImmediateResponse ? '⚡ Yes (Urgent)' : 'Standard Queue'}
-                    </p>
-                  </div>
+              {/* 2. Admin Manual Override */}
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Sliders className="w-3 h-3 text-amber-400" />
+                  Admin Override
+                </span>
 
-                  <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 space-y-0.5 col-span-2 sm:col-span-1">
-                    <span className="text-[10px] font-semibold text-slate-500 uppercase">Threat Level</span>
-                    <div className="text-xs font-bold text-teal-300 uppercase flex items-center gap-1">
-                      <span>{ai.severity}</span>
-                      {isResolved && <Lock className="w-3 h-3 text-slate-400 inline" />}
+                {isResolved ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-bold text-slate-400">
+                      <span>{effectiveSeverity}</span>
+                      <Lock className="w-3 h-3 text-slate-500 ml-auto" />
                     </div>
+                    <p className="text-[10px] text-emerald-400 flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" />
+                      Severity is locked after resolution.
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-1">
+                    <select
+                      value={effectiveSeverity}
+                      disabled={updatingSeverity}
+                      onChange={(e) => handleSeverityChange(e.target.value as any)}
+                      className="w-full px-2.5 py-1 bg-slate-950 border border-teal-500/40 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-teal-400"
+                    >
+                      <option value="LOW">LOW</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                      <option value="HIGH">HIGH</option>
+                      <option value="CRITICAL">CRITICAL</option>
+                    </select>
+                    {incident.adminSeverity && (
+                      <p className="text-[10px] text-amber-300">
+                        Overridden by {incident.adminSeverityChangedBy || 'Admin'}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
 
-                {/* AI Summary */}
+              {/* 3. Immediate Response Status */}
+              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-red-400" />
+                  Immediate Dispatch
+                </span>
+                <p className={`text-sm font-extrabold ${immediate ? 'text-red-400' : 'text-slate-300'}`}>
+                  {immediate ? '⚡ Yes (Urgent)' : 'Standard Queue'}
+                </p>
+                <p className="text-[10px] text-slate-500">
+                  {immediate ? 'Priority fast-track' : 'Standard SLA tracking'}
+                </p>
+              </div>
+            </div>
+
+            {/* AI Summary & Suggested Action */}
+            {ai ? (
+              <div className="space-y-3 pt-2 border-t border-slate-800/80 text-xs">
                 {ai.summary && (
                   <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
@@ -187,7 +292,6 @@ export const IncidentDetail: React.FC = () => {
                   </div>
                 )}
 
-                {/* Suggested Action */}
                 {ai.suggestedAction && (
                   <div className="p-3.5 rounded-xl bg-slate-900/90 border border-teal-500/20 space-y-1">
                     <span className="text-[10px] font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1">
@@ -280,7 +384,7 @@ export const IncidentDetail: React.FC = () => {
             <div className="rounded-xl overflow-hidden border border-slate-800">
               <IncidentMap
                 location={incident.location}
-                severity={aiSeverity}
+                severity={effectiveSeverity}
                 className="h-44"
               />
             </div>

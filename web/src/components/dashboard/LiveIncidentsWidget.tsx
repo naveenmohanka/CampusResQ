@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Incident } from '../../types/incident';
 import { AiSeverityBadge, StatusBadge, CategoryBadge } from '../common/Badge';
-import { formatLocationString, getIncidentAiSeverity, isImmediateResponseRequired, parseAiAnalysis } from '../../utils/aiAnalysis';
+import { formatLocationString, getEffectiveSeverity, isImmediateResponseRequired, parseAiAnalysis } from '../../utils/aiAnalysis';
 import { formatTimeAgo } from '../../utils/dateUtils';
 import { Clock, Activity, ArrowRight, ShieldAlert, Zap } from 'lucide-react';
 
@@ -13,10 +13,10 @@ interface LiveIncidentsWidgetProps {
 export const LiveIncidentsWidget: React.FC<LiveIncidentsWidgetProps> = ({ incidents }) => {
   const [activeTab, setActiveTab] = useState<'critical' | 'recent' | 'active'>('critical');
 
-  // A. Critical Incidents: aiAnalysis.severity == CRITICAL, requiresImmediateResponse first
+  // A. Critical Incidents: effective severity == CRITICAL, requiresImmediateResponse first
   const criticalIncidents = incidents
     .filter((inc) => {
-      const sev = getIncidentAiSeverity(inc);
+      const sev = getEffectiveSeverity(inc);
       return (sev === 'CRITICAL' || isImmediateResponseRequired(inc)) && (inc.status || '').toLowerCase() !== 'resolved';
     })
     .sort((a, b) => {
@@ -112,7 +112,7 @@ export const LiveIncidentsWidget: React.FC<LiveIncidentsWidgetProps> = ({ incide
         <div className="divide-y divide-slate-800/60">
           {displayedList.map((inc) => {
             const ai = parseAiAnalysis(inc.aiAnalysis);
-            const aiSeverity = getIncidentAiSeverity(inc);
+            const effSeverity = getEffectiveSeverity(inc);
             const immediate = isImmediateResponseRequired(inc);
 
             return (
@@ -127,7 +127,7 @@ export const LiveIncidentsWidget: React.FC<LiveIncidentsWidgetProps> = ({ incide
                       #{inc.id}
                     </span>
                     <AiSeverityBadge
-                      severity={aiSeverity}
+                      severity={effSeverity}
                       requiresImmediateResponse={immediate}
                     />
                     <StatusBadge status={inc.status} />
@@ -136,6 +136,11 @@ export const LiveIncidentsWidget: React.FC<LiveIncidentsWidgetProps> = ({ incide
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-950 text-red-300 border border-red-600 animate-pulse">
                         <Zap className="w-3 h-3 text-red-400" />
                         IMMEDIATE ACTION
+                      </span>
+                    )}
+                    {inc.adminSeverity && (
+                      <span className="text-[10px] text-amber-300 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/40 font-mono">
+                        OVERRIDDEN
                       </span>
                     )}
                   </div>

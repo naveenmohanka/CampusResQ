@@ -28,6 +28,12 @@ export interface Incident {
   description: string;
   category: IncidentCategory;
   severity?: IncidentSeverity;
+  
+  // Admin Manual Severity Override (Separate from AI Analysis)
+  adminSeverity?: IncidentSeverity | null;
+  adminSeverityChangedBy?: string | null;
+  adminSeverityChangedAt?: string | null;
+  
   status: IncidentStatus;
   location: any; // string or IncidentLocation
   
@@ -38,7 +44,7 @@ export interface Incident {
   reporterPhone?: string;
   isAnonymous?: boolean;
   
-  // AI Analysis (Android Source of Truth)
+  // AI Analysis (Android Source of Truth - Preserved untouched)
   aiAnalysisStatus?: 'pending' | 'completed' | 'failed' | string;
   aiAnalysis?: string | AiAnalysis;
   
