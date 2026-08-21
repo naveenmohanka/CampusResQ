@@ -13,8 +13,9 @@ class ResponseTeamViewModel(
     private val repository: IncidentRepository = IncidentRepository()
 ) : ViewModel() {
 
+    // Only incidents assigned to the currently logged-in responder
     val incidents: StateFlow<List<Incident>> = repository
-        .getAllIncidents()
+        .getAssignedIncidents()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -26,6 +27,7 @@ class ResponseTeamViewModel(
         status: String
     ) {
         viewModelScope.launch {
+
             val result = repository.updateIncidentStatus(
                 incidentId = incidentId,
                 status = status
@@ -36,7 +38,9 @@ class ResponseTeamViewModel(
             }
 
             result.onFailure { error ->
-                println("STATUS UPDATE FAILED: ${error.message}")
+                println(
+                    "STATUS UPDATE FAILED: ${error.message}"
+                )
             }
         }
     }

@@ -2,16 +2,13 @@ package com.kiit.campusresq.presentation.role
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,19 +33,21 @@ fun ChooseRoleScreen(
 ) {
     val roleState by viewModel.roleState.collectAsState()
 
+    // Check the current Firestore role/approval state
+    // whenever this screen is opened.
+    LaunchedEffect(Unit) {
+        viewModel.checkResponderStatus()
+    }
+
     LaunchedEffect(roleState) {
         when (roleState) {
 
-            is RoleState.ReporterSuccess -> {
+            RoleState.ReporterSuccess -> {
                 onReporterSelected()
             }
 
-            is RoleState.ResponderApproved -> {
+            RoleState.ResponderApproved -> {
                 onResponderSelected()
-            }
-
-            is RoleState.ResponderPending -> {
-                // User is waiting for admin approval
             }
 
             else -> Unit
@@ -105,7 +104,20 @@ fun ChooseRoleScreen(
                 title = "Response Team",
                 description =
                     "Review reported incidents and coordinate their response.",
-                action = "Continue as Responder",
+                action = when (roleState) {
+
+                    RoleState.ResponderPending ->
+                        "Waiting for Admin Approval"
+
+                    RoleState.ResponderRejected ->
+                        "Request Access Again"
+
+                    RoleState.ResponderApproved ->
+                        "Access Approved"
+
+                    else ->
+                        "Request Responder Access"
+                },
                 enabled = !isLoading,
                 onClick = {
                     viewModel.requestResponderAccess()
@@ -120,7 +132,8 @@ fun ChooseRoleScreen(
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment =
+                        Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator()
 
@@ -129,9 +142,65 @@ fun ChooseRoleScreen(
                     )
 
                     Text(
-                        text = "Saving your role..."
+                        text = "Checking access..."
                     )
                 }
+            }
+
+            if (roleState is RoleState.ResponderPending) {
+
+                Spacer(
+                    modifier = Modifier.height(20.dp)
+                )
+
+                Text(
+                    text =
+                        "Your Response Team access request is waiting " +
+                                "for admin approval. Please check again later.",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color =
+                                MaterialTheme
+                                    .colorScheme
+                                    .secondaryContainer,
+                            shape =
+                                RoundedCornerShape(12.dp)
+                        )
+                        .padding(16.dp),
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSecondaryContainer
+                )
+            }
+
+            if (roleState is RoleState.ResponderRejected) {
+
+                Spacer(
+                    modifier = Modifier.height(20.dp)
+                )
+
+                Text(
+                    text =
+                        "Your previous Response Team access request " +
+                                "was not approved. You can request access again.",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color =
+                                MaterialTheme
+                                    .colorScheme
+                                    .errorContainer,
+                            shape =
+                                RoundedCornerShape(12.dp)
+                        )
+                        .padding(16.dp),
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onErrorContainer
+                )
             }
 
             if (roleState is RoleState.Error) {

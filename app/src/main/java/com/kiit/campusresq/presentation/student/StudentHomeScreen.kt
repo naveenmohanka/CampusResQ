@@ -17,11 +17,14 @@ import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +40,8 @@ import com.kiit.campusresq.ui.theme.SurfaceWhite
 @Composable
 fun StudentHomeScreen(
     onReportIncident: () -> Unit,
-    onMyReports: () -> Unit
+    onMyReports: () -> Unit,
+    onLogout: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -195,5 +199,27 @@ fun StudentHomeScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // LOGOUT BUTTON
+        OutlinedButton(
+            onClick = onLogout,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Logout,
+                contentDescription = "Logout"
+            )
+
+            Spacer(modifier = Modifier.size(8.dp))
+
+            Text(
+                text = "Logout",
+                fontWeight = FontWeight.SemiBold
+            )
+        }
     }
 }

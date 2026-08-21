@@ -93,7 +93,7 @@ fun MentorHomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(30.dp)
     ) {
 
         item {
@@ -335,6 +335,19 @@ private fun IncidentCard(
             ) {
                 StatusBadge(
                     status = status
+                )
+            }
+            if (incident.assignedToName.isNotBlank()) {
+
+                Spacer(
+                    modifier = Modifier.height(10.dp)
+                )
+
+                Text(
+                    text = "Assigned to: ${incident.assignedToName}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
 

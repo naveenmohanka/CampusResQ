@@ -11,6 +11,7 @@ import com.kiit.campusresq.presentation.mentor.MentorHomeScreen
 import com.kiit.campusresq.presentation.report.MyReportsScreen
 import com.kiit.campusresq.presentation.report.ReportIncidentScreen
 import com.kiit.campusresq.presentation.student.StudentHomeScreen
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun AppNavHost(
@@ -70,6 +71,18 @@ fun AppNavHost(
                     navController.navigate(
                         AppDestination.MyReports.route
                     )
+                },
+                onLogout = {
+
+                    navController.navigate(
+                        AppDestination.ChooseRole.route
+                    ) {
+                        popUpTo(0) {
+                            inclusive = true
+                        }
+
+                        launchSingleTop = true
+                    }
                 }
             )
         }
