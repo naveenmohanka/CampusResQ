@@ -1,25 +1,17 @@
 import {
   collection,
-  doc,
   getDocs,
-  updateDoc,
   query,
   where,
   orderBy,
   onSnapshot
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
-import { UserProfile, UserFilters, UserRole } from '../types/user';
+import { UserProfile, UserFilters } from '../types/user';
 import { INITIAL_USERS } from './mockData';
-import { logActivity } from './activityService';
 
 let localUsers: UserProfile[] = [...INITIAL_USERS];
 const userListeners: Set<(users: UserProfile[]) => void> = new Set();
-
-function notifyUserListeners() {
-  const list = [...localUsers];
-  userListeners.forEach((cb) => cb(list));
-}
 
 export function subscribeToUsers(
   callback: (users: UserProfile[], loading: boolean, error: Error | null) => void,
@@ -100,32 +92,6 @@ export async function getMentors(): Promise<UserProfile[]> {
   }
 
   return localUsers.filter((u) => u.role === 'mentor');
-}
-
-export async function updateUserRole(
-  userId: string,
-  newRole: UserRole,
-  performedBy: string,
-  performedByName: string
-): Promise<void> {
-  const nowISO = new Date().toISOString();
-
-  if (isFirebaseConfigured && db) {
-    const docRef = doc(db, 'users', userId);
-    await updateDoc(docRef, { role: newRole });
-  } else {
-    localUsers = localUsers.map((u) => (u.id === userId ? { ...u, role: newRole } : u));
-    notifyUserListeners();
-  }
-
-  await logActivity({
-    action: 'USER_ROLE_CHANGED',
-    performedBy,
-    performedByName,
-    performedByRole: 'admin',
-    details: `Updated role for user ID "${userId}" to "${newRole.toUpperCase()}"`,
-    timestamp: nowISO,
-  });
 }
 
 function applyUserFilters(users: UserProfile[], filters?: UserFilters): UserProfile[] {
