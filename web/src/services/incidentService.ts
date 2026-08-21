@@ -6,19 +6,45 @@ import {
   query,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase/config';
-import { Incident, IncidentFilters, IncidentStatus, IncidentSeverity } from '../types/incident';
+import { Incident, IncidentFilters, IncidentStats } from '../types/incident';
 import { INITIAL_INCIDENTS } from './mockData';
-import { logActivity } from './activityService';
+import { getIncidentAiSeverity, parseAiAnalysis } from '../utils/aiAnalysis';
 
 let localIncidents: Incident[] = [...INITIAL_INCIDENTS];
 const incidentListeners: Set<(incidents: Incident[]) => void> = new Set();
 
-function notifyLocalListeners() {
-  const list = [...localIncidents];
-  incidentListeners.forEach(cb => cb(list));
+export function calculateIncidentStats(incidents: Incident[]): IncidentStats {
+  let pending = 0;
+  let active = 0;
+  let resolved = 0;
+  let criticalHigh = 0;
+
+  incidents.forEach((inc) => {
+    const status = (inc.status || 'pending').toLowerCase();
+    if (status === 'pending' || status === 'reported') {
+      pending++;
+    } else if (status === 'accepted' || status === 'in_progress') {
+      active++;
+    } else if (status === 'resolved') {
+      resolved++;
+    }
+
+    const aiSev = getIncidentAiSeverity(inc);
+    if (aiSev === 'CRITICAL' || aiSev === 'HIGH') {
+      criticalHigh++;
+    }
+  });
+
+  return {
+    total: incidents.length,
+    pending,
+    active,
+    resolved,
+    criticalHigh,
+  };
 }
 
 export function subscribeToIncidents(
@@ -41,29 +67,24 @@ export function subscribeToIncidents(
               title: data.title || 'Untitled Incident',
               description: data.description || '',
               category: data.category || 'other',
-              severity: data.severity || 'medium',
-              status: data.status || 'reported',
-              location: data.location || {
-                latitude: 20.3533,
-                longitude: 85.8189,
-                address: 'Main Campus',
-                building: 'Main Campus Building',
-              },
+              severity: data.severity,
+              status: data.status || 'pending',
+              location: data.location || 'Main Campus',
               reporterId: data.reporterId || '',
               reporterName: isAnon ? 'Anonymous Reporter' : (data.reporterName || 'Student Reporter'),
               reporterEmail: isAnon ? undefined : data.reporterEmail,
               reporterPhone: isAnon ? undefined : data.reporterPhone,
               isAnonymous: isAnon,
+              aiAnalysisStatus: data.aiAnalysisStatus,
+              aiAnalysis: data.aiAnalysis,
               assignedTo: data.assignedTo || null,
               assignedToName: data.assignedToName || null,
               assignedToEmail: data.assignedToEmail || null,
               assignedToPhone: data.assignedToPhone || null,
               resolutionNotes: data.resolutionNotes,
               images: data.images || [],
-              evidence: data.evidence || [],
               createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
               assignedAt: data.assignedAt?.toDate ? data.assignedAt.toDate().toISOString() : data.assignedAt,
-              acknowledgedAt: data.acknowledgedAt?.toDate ? data.acknowledgedAt.toDate().toISOString() : data.acknowledgedAt,
               inProgressAt: data.inProgressAt?.toDate ? data.inProgressAt.toDate().toISOString() : data.inProgressAt,
               resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
               updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
@@ -110,29 +131,24 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
           title: data.title || 'Untitled Incident',
           description: data.description || '',
           category: data.category || 'other',
-          severity: data.severity || 'medium',
-          status: data.status || 'reported',
-          location: data.location || {
-            latitude: 20.3533,
-            longitude: 85.8189,
-            address: 'Main Campus',
-            building: 'Main Campus Building',
-          },
+          severity: data.severity,
+          status: data.status || 'pending',
+          location: data.location || 'Main Campus',
           reporterId: data.reporterId || '',
           reporterName: isAnon ? 'Anonymous Reporter' : (data.reporterName || 'Student Reporter'),
           reporterEmail: isAnon ? undefined : data.reporterEmail,
           reporterPhone: isAnon ? undefined : data.reporterPhone,
           isAnonymous: isAnon,
+          aiAnalysisStatus: data.aiAnalysisStatus,
+          aiAnalysis: data.aiAnalysis,
           assignedTo: data.assignedTo || null,
           assignedToName: data.assignedToName || null,
           assignedToEmail: data.assignedToEmail || null,
           assignedToPhone: data.assignedToPhone || null,
           resolutionNotes: data.resolutionNotes,
           images: data.images || [],
-          evidence: data.evidence || [],
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : (data.createdAt || new Date().toISOString()),
           assignedAt: data.assignedAt?.toDate ? data.assignedAt.toDate().toISOString() : data.assignedAt,
-          acknowledgedAt: data.acknowledgedAt?.toDate ? data.acknowledgedAt.toDate().toISOString() : data.acknowledgedAt,
           inProgressAt: data.inProgressAt?.toDate ? data.inProgressAt.toDate().toISOString() : data.inProgressAt,
           resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate().toISOString() : data.resolvedAt,
           updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : (data.updatedAt || new Date().toISOString()),
@@ -147,194 +163,189 @@ export async function getIncidentById(id: string): Promise<Incident | null> {
   return found || null;
 }
 
-export async function updateIncidentStatus(
-  incidentId: string,
-  newStatus: IncidentStatus,
-  performedBy: string,
-  performedByName: string,
-  resolutionNotes?: string
-): Promise<void> {
-  const nowISO = new Date().toISOString();
-
-  if (isFirebaseConfigured && db) {
-    const docRef = doc(db, 'incidents', incidentId);
-    const updateData: any = {
-      status: newStatus,
-      updatedAt: serverTimestamp(),
-    };
-    if (newStatus === 'in_progress') {
-      updateData.inProgressAt = serverTimestamp();
-    }
-    if (newStatus === 'resolved') {
-      updateData.resolvedAt = serverTimestamp();
-      if (resolutionNotes) updateData.resolutionNotes = resolutionNotes;
-    }
-    await updateDoc(docRef, updateData);
-  } else {
-    localIncidents = localIncidents.map((inc) => {
-      if (inc.id === incidentId) {
-        return {
-          ...inc,
-          status: newStatus,
-          resolutionNotes: resolutionNotes || inc.resolutionNotes,
-          inProgressAt: newStatus === 'in_progress' ? nowISO : inc.inProgressAt,
-          resolvedAt: newStatus === 'resolved' ? nowISO : inc.resolvedAt,
-          updatedAt: nowISO,
-        };
-      }
-      return inc;
-    });
-    notifyLocalListeners();
-  }
-
-  await logActivity({
-    incidentId,
-    action: newStatus === 'resolved' ? 'INCIDENT_RESOLVED' : 'STATUS_CHANGED',
-    performedBy,
-    performedByName,
-    performedByRole: 'admin',
-    details: `Incident status updated to "${newStatus.replace('_', ' ').toUpperCase()}"${
-      resolutionNotes ? ` with resolution note: "${resolutionNotes}"` : ''
-    }`,
-    timestamp: nowISO,
-  });
-}
-
 export async function assignMentorToIncident(
   incidentId: string,
-  mentorId: string,
-  mentorName: string,
-  mentorEmail: string,
-  performedBy: string,
-  performedByName: string
+  mentorIdOrObj: any,
+  mentorName?: string,
+  mentorEmail?: string,
+  _adminId?: string,
+  _adminName?: string
 ): Promise<void> {
-  const nowISO = new Date().toISOString();
+  const mId = typeof mentorIdOrObj === 'object' ? mentorIdOrObj.id : mentorIdOrObj;
+  const mName = typeof mentorIdOrObj === 'object' ? mentorIdOrObj.name : mentorName;
+  const mEmail = typeof mentorIdOrObj === 'object' ? mentorIdOrObj.email : mentorEmail;
 
   if (isFirebaseConfigured && db) {
     const docRef = doc(db, 'incidents', incidentId);
     await updateDoc(docRef, {
-      assignedTo: mentorId,
-      assignedToName: mentorName,
-      assignedToEmail: mentorEmail,
-      status: 'assigned',
+      assignedTo: mId,
+      assignedToName: mName,
+      assignedToEmail: mEmail,
+      status: 'accepted',
       assignedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-  } else {
-    localIncidents = localIncidents.map((inc) => {
-      if (inc.id === incidentId) {
-        return {
-          ...inc,
-          assignedTo: mentorId,
-          assignedToName: mentorName,
-          assignedToEmail: mentorEmail,
-          status: inc.status === 'reported' ? 'assigned' : inc.status,
-          assignedAt: inc.assignedAt || nowISO,
-          updatedAt: nowISO,
-        };
-      }
-      return inc;
-    });
-    notifyLocalListeners();
+    return;
   }
 
-  await logActivity({
-    incidentId,
-    action: 'INCIDENT_ASSIGNED',
-    performedBy,
-    performedByName,
-    performedByRole: 'admin',
-    details: `Assigned incident to responder ${mentorName} (${mentorEmail})`,
-    timestamp: nowISO,
-  });
+  localIncidents = localIncidents.map((inc) =>
+    inc.id === incidentId
+      ? {
+          ...inc,
+          assignedTo: mId,
+          assignedToName: mName,
+          assignedToEmail: mEmail,
+          status: 'accepted',
+          assignedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      : inc
+  );
+  notifyListeners();
+}
+
+export async function updateIncidentStatus(
+  incidentId: string,
+  status: any,
+  _actorIdOrNotes?: string,
+  _actorName?: string,
+  notes?: string
+): Promise<void> {
+  const target = await getIncidentById(incidentId);
+  if (!target) throw new Error('Incident not found');
+
+  const resolutionNotes = typeof _actorIdOrNotes === 'string' && !notes && (status === 'resolved') ? _actorIdOrNotes : notes;
+
+  const updates: any = {
+    status,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (resolutionNotes) {
+    updates.resolutionNotes = resolutionNotes;
+  }
+
+  if (status === 'resolved') {
+    updates.resolvedAt = new Date().toISOString();
+  } else if (status === 'in_progress' && !target.inProgressAt) {
+    updates.inProgressAt = new Date().toISOString();
+  }
+
+  if (isFirebaseConfigured && db) {
+    const docRef = doc(db, 'incidents', incidentId);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+      ...(status === 'resolved' ? { resolvedAt: serverTimestamp() } : {}),
+      ...(status === 'in_progress' && !target.inProgressAt ? { inProgressAt: serverTimestamp() } : {}),
+    });
+    return;
+  }
+
+  localIncidents = localIncidents.map((inc) =>
+    inc.id === incidentId ? { ...inc, ...updates } : inc
+  );
+  notifyListeners();
 }
 
 export async function updateIncidentSeverity(
   incidentId: string,
-  newSeverity: IncidentSeverity,
-  performedBy: string,
-  performedByName: string
+  severity: any
 ): Promise<void> {
-  const nowISO = new Date().toISOString();
+  const target = await getIncidentById(incidentId);
+  if (!target) throw new Error('Incident not found');
 
-  // Business Rule: The Threat Level cannot be modified once the incident is RESOLVED
-  if (isFirebaseConfigured && db) {
-    const docRef = doc(db, 'incidents', incidentId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      if (data.status === 'resolved') {
-        throw new Error('Threat level cannot be changed after an incident is resolved.');
-      }
-      if (data.severity === newSeverity) {
-        return; // No-op if identical
-      }
-    }
-    await updateDoc(docRef, {
-      severity: newSeverity,
-      updatedAt: serverTimestamp(),
-    });
-  } else {
-    const existing = localIncidents.find((inc) => inc.id === incidentId);
-    if (existing && existing.status === 'resolved') {
-      throw new Error('Threat level cannot be changed after an incident is resolved.');
-    }
-    localIncidents = localIncidents.map((inc) => {
-      if (inc.id === incidentId) {
-        return {
-          ...inc,
-          severity: newSeverity,
-          updatedAt: nowISO,
-        };
-      }
-      return inc;
-    });
-    notifyLocalListeners();
+  if ((target.status || '').toLowerCase() === 'resolved') {
+    throw new Error('Threat level cannot be changed after an incident is resolved.');
   }
 
-  await logActivity({
-    incidentId,
-    action: 'SEVERITY_UPDATED',
-    performedBy,
-    performedByName,
-    performedByRole: 'admin',
-    details: `Severity escalated to "${newSeverity.toUpperCase()}"`,
-    timestamp: nowISO,
-  });
+  if (isFirebaseConfigured && db) {
+    const docRef = doc(db, 'incidents', incidentId);
+    await updateDoc(docRef, {
+      severity,
+      updatedAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  localIncidents = localIncidents.map((inc) =>
+    inc.id === incidentId
+      ? { ...inc, severity, updatedAt: new Date().toISOString() }
+      : inc
+  );
+  notifyListeners();
+}
+
+function notifyListeners() {
+  incidentListeners.forEach((fn) => fn([...localIncidents]));
 }
 
 function applyFilters(incidents: Incident[], filters?: IncidentFilters): Incident[] {
   if (!filters) return incidents;
 
-  return incidents.filter((inc) => {
-    if (filters.status && filters.status !== 'all' && inc.status !== filters.status) {
-      return false;
+  let result = incidents.filter((inc) => {
+    // Status filter
+    if (filters.status && filters.status !== 'all') {
+      const s = (inc.status || 'pending').toLowerCase();
+      const target = filters.status.toLowerCase();
+      if (target === 'pending') {
+        if (s !== 'pending' && s !== 'reported') return false;
+      } else if (target === 'in_progress') {
+        if (s !== 'in_progress') return false;
+      } else if (target === 'accepted') {
+        if (s !== 'accepted') return false;
+      } else if (target === 'resolved') {
+        if (s !== 'resolved') return false;
+      }
     }
-    if (filters.severity && filters.severity !== 'all' && inc.severity !== filters.severity) {
-      return false;
+
+    // AI Severity filter
+    if (filters.aiSeverity && filters.aiSeverity !== 'all') {
+      const aiSev = getIncidentAiSeverity(inc);
+      if (aiSev !== filters.aiSeverity) return false;
     }
-    if (filters.category && filters.category !== 'all' && inc.category !== filters.category) {
-      return false;
-    }
-    if (filters.assignedTo && filters.assignedTo !== 'all') {
-      if (filters.assignedTo === 'unassigned' && inc.assignedTo) return false;
-      if (filters.assignedTo !== 'unassigned' && inc.assignedTo !== filters.assignedTo) return false;
-    }
-    if (filters.isAnonymous !== undefined) {
-      if (Boolean(inc.isAnonymous) !== filters.isAnonymous) return false;
-    }
-    if (filters.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      const matchTitle = inc.title.toLowerCase().includes(q);
-      const matchDesc = inc.description.toLowerCase().includes(q);
-      const matchLoc = inc.location.address.toLowerCase().includes(q);
-      const matchBldg = (inc.location.building || '').toLowerCase().includes(q);
-      const matchReporter = (inc.reporterName || '').toLowerCase().includes(q);
-      const matchId = inc.id.toLowerCase().includes(q);
-      if (!matchTitle && !matchDesc && !matchLoc && !matchBldg && !matchReporter && !matchId) {
+
+    // Category filter
+    if (filters.category && filters.category !== 'all') {
+      if ((inc.category || '').toLowerCase() !== filters.category.toLowerCase()) {
         return false;
       }
     }
+
+    // Search query
+    if (filters.searchQuery) {
+      const q = filters.searchQuery.toLowerCase();
+      const matchTitle = (inc.title || '').toLowerCase().includes(q);
+      const matchDesc = (inc.description || '').toLowerCase().includes(q);
+      const matchCategory = (inc.category || '').toLowerCase().includes(q);
+      const locStr = typeof inc.location === 'string' ? inc.location : (inc.location?.address || inc.location?.building || '');
+      const matchLoc = locStr.toLowerCase().includes(q);
+      const matchId = (inc.id || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchCategory && !matchLoc && !matchId) {
+        return false;
+      }
+    }
+
     return true;
   });
+
+  // Sorting
+  if (filters.sortBy === 'priority') {
+    const scoreMap = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, UNKNOWN: 0 };
+    result = [...result].sort((a, b) => {
+      const aParsed = parseAiAnalysis(a.aiAnalysis);
+      const bParsed = parseAiAnalysis(b.aiAnalysis);
+      const aScore = aParsed?.priorityScore ?? (scoreMap[getIncidentAiSeverity(a)] * 2);
+      const bScore = bParsed?.priorityScore ?? (scoreMap[getIncidentAiSeverity(b)] * 2);
+      if (bScore !== aScore) {
+        return bScore - aScore;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  } else {
+    // Default newest
+    result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  return result;
 }

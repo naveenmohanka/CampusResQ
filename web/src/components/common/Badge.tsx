@@ -1,31 +1,39 @@
 import React from 'react';
-import { IncidentSeverity, IncidentStatus, IncidentCategory } from '../../types/incident';
+import { IncidentStatus, IncidentCategory } from '../../types/incident';
 import { UserRole } from '../../types/user';
-import { getSeverityColor, getStatusColor, getRoleBadgeColor, formatStatus, getCategoryColor } from '../../utils/formatters';
+import { getAiSeverityColor, getStatusColor, formatStatus, getCategoryColor } from '../../utils/formatters';
 
-export const SeverityBadge: React.FC<{ severity: IncidentSeverity; showDot?: boolean }> = ({
+export const AiSeverityBadge: React.FC<{
+  severity: string;
+  showDot?: boolean;
+  requiresImmediateResponse?: boolean;
+}> = ({
   severity,
   showDot = true,
+  requiresImmediateResponse = false,
 }) => {
-  const colors = getSeverityColor(severity);
+  const colors = getAiSeverityColor(severity);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border ${colors.badge}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${colors.badge} ${
+        requiresImmediateResponse ? 'animate-pulse ring-1 ring-red-500' : ''
+      }`}
     >
       {showDot && <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />}
-      {severity}
+      {severity || 'MEDIUM'}
+      {requiresImmediateResponse && <span className="text-[10px] text-red-300 font-extrabold ml-0.5">⚡</span>}
     </span>
   );
 };
 
-export const StatusBadge: React.FC<{ status: IncidentStatus; showDot?: boolean }> = ({
+export const StatusBadge: React.FC<{ status: IncidentStatus | string; showDot?: boolean }> = ({
   status,
   showDot = true,
 }) => {
   const colors = getStatusColor(status);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${colors.badge}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${colors.badge}`}
     >
       {showDot && <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />}
       {formatStatus(status)}
@@ -33,7 +41,7 @@ export const StatusBadge: React.FC<{ status: IncidentStatus; showDot?: boolean }
   );
 };
 
-export const CategoryBadge: React.FC<{ category: IncidentCategory }> = ({ category }) => {
+export const CategoryBadge: React.FC<{ category: IncidentCategory | string }> = ({ category }) => {
   const color = getCategoryColor(category);
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize border ${color}`}>
@@ -42,10 +50,9 @@ export const CategoryBadge: React.FC<{ category: IncidentCategory }> = ({ catego
   );
 };
 
-export const RoleBadge: React.FC<{ role: UserRole }> = ({ role }) => {
-  const color = getRoleBadgeColor(role);
+export const RoleBadge: React.FC<{ role: UserRole | string }> = ({ role }) => {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize border ${color}`}>
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize border bg-slate-800 text-teal-300 border-slate-700">
       {role}
     </span>
   );

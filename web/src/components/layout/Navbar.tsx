@@ -4,7 +4,6 @@ import { useIncidents } from '../../hooks/useIncidents';
 import {
   Menu,
   LogOut,
-  Radio,
   ShieldCheck,
   Zap
 } from 'lucide-react';
@@ -30,59 +29,56 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
         </button>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-slate-300">Operations Status:</span>
-            <span className="font-mono text-emerald-400 font-bold">READY</span>
-          </div>
+          <span
+            className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider border ${
+              isFirebaseConfigured
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                : 'bg-teal-500/10 text-teal-400 border-teal-500/30'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isFirebaseConfigured ? 'bg-emerald-400 animate-ping' : 'bg-teal-400'
+              }`}
+            />
+            {isFirebaseConfigured ? 'Live Cloud Sync' : 'Demo Mode'}
+          </span>
 
-          {/* Mode Indicator Badge */}
-          {isFirebaseConfigured ? (
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-[11px] text-emerald-300 font-medium">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Production Firestore</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/60 border border-amber-500/40 text-[11px] text-amber-300 font-medium">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>DEMO MODE (Simulated Campus Data)</span>
+          {stats.criticalHigh > 0 && (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse">
+              <Zap className="w-3.5 h-3.5" />
+              <span>{stats.criticalHigh} Critical / High Priority</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Right side: Live telemetry badge, Admin profile, Logout */}
+      {/* Right side: Admin Profile & Logout */}
       <div className="flex items-center gap-3">
-        {/* Critical alert banner if any */}
-        {stats.critical > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-950 border border-red-500/50 text-red-300 text-xs font-bold animate-pulse shadow-glow-red">
-            <Radio className="w-3.5 h-3.5 text-red-400" />
-            <span>{stats.critical} CRITICAL ACTIVE</span>
+        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800">
+          <div className="w-7 h-7 rounded-lg bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400 font-bold text-xs uppercase">
+            {user?.name?.charAt(0) || 'A'}
           </div>
-        )}
-
-        {/* User profile dropdown info */}
-        {user && (
-          <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
-            <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-teal-400 font-bold text-xs">
-              {user.name.charAt(0)}
-            </div>
-            <div className="hidden sm:block text-left">
-              <p className="text-xs font-bold text-white leading-tight">{user.name}</p>
-              <p className="text-[10px] text-slate-400 font-mono capitalize">{user.role} Authorization</p>
-            </div>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={logout}
-              className="p-2"
-              icon={<LogOut className="w-4 h-4 text-slate-400 hover:text-rose-400 transition-colors" />}
-            >
-              <span className="sr-only">Sign out</span>
-            </Button>
+          <div className="hidden sm:block text-left">
+            <p className="text-xs font-semibold text-white leading-tight">
+              {user?.name || 'Administrator'}
+            </p>
+            <p className="text-[10px] text-teal-400 font-mono leading-tight flex items-center gap-1">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              Security Admin
+            </p>
           </div>
-        )}
+        </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={logout}
+          icon={<LogOut className="w-4 h-4" />}
+          className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+        >
+          <span className="hidden sm:inline">Logout</span>
+        </Button>
       </div>
     </header>
   );

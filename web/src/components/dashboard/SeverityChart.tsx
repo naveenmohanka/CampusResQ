@@ -1,21 +1,23 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Incident } from '../../types/incident';
+import { getIncidentAiSeverity } from '../../utils/aiAnalysis';
 
 export const SeverityChart: React.FC<{ incidents: Incident[] }> = ({ incidents }) => {
   const counts = incidents.reduce(
     (acc, inc) => {
-      acc[inc.severity] = (acc[inc.severity] || 0) + 1;
+      const sev = getIncidentAiSeverity(inc).toLowerCase();
+      acc[sev] = (acc[sev] || 0) + 1;
       return acc;
     },
     { critical: 0, high: 0, medium: 0, low: 0 } as Record<string, number>
   );
 
   const data = [
-    { name: 'Critical', count: counts.critical, color: '#ef4444' },
-    { name: 'High', count: counts.high, color: '#f97316' },
-    { name: 'Medium', count: counts.medium, color: '#eab308' },
-    { name: 'Low', count: counts.low, color: '#3b82f6' },
+    { name: 'Critical', count: counts.critical || 0, color: '#ef4444' },
+    { name: 'High', count: counts.high || 0, color: '#f97316' },
+    { name: 'Medium', count: counts.medium || 0, color: '#eab308' },
+    { name: 'Low', count: counts.low || 0, color: '#3b82f6' },
   ];
 
   return (
@@ -23,7 +25,7 @@ export const SeverityChart: React.FC<{ incidents: Incident[] }> = ({ incidents }
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-bold text-base text-white">Severity Distribution</h3>
-          <p className="text-xs text-slate-400">Threat level analysis of campus events</p>
+          <p className="text-xs text-slate-400">AI threat level analysis of campus events</p>
         </div>
       </div>
 

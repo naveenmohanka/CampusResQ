@@ -1,5 +1,6 @@
 import { Incident } from '../types/incident';
 import { IntelligenceSummary, HotspotLocation, ResponseTimeMetric, SeverityResponseMetric, TimeSeriesPoint } from '../types/analytics';
+import { getIncidentAiSeverity } from '../utils/aiAnalysis';
 
 export function computeCampusIntelligence(incidents: Incident[]): IntelligenceSummary {
   if (!incidents || incidents.length === 0) {
@@ -22,12 +23,14 @@ export function computeCampusIntelligence(incidents: Incident[]): IntelligenceSu
   const locationMap: Record<string, { total: number; critical: number; categories: Record<string, number>; latest: string }> = {};
 
   incidents.forEach((inc) => {
-    const key = inc.location.building || inc.location.address || 'Unspecified Campus Area';
+    const loc = typeof inc.location === 'object' ? inc.location : { address: inc.location };
+    const key = loc?.building || loc?.address || 'Main Campus';
     if (!locationMap[key]) {
       locationMap[key] = { total: 0, critical: 0, categories: {}, latest: inc.createdAt };
     }
     locationMap[key].total += 1;
-    if (inc.severity === 'critical') locationMap[key].critical += 1;
+    const aiSev = getIncidentAiSeverity(inc);
+    if (aiSev === 'CRITICAL') locationMap[key].critical += 1;
     locationMap[key].categories[inc.category] = (locationMap[key].categories[inc.category] || 0) + 1;
     if (new Date(inc.createdAt) > new Date(locationMap[key].latest)) {
       locationMap[key].latest = inc.createdAt;
@@ -36,15 +39,7 @@ export function computeCampusIntelligence(incidents: Incident[]): IntelligenceSu
 
   const hotspots: HotspotLocation[] = Object.entries(locationMap)
     .map(([building, data]) => {
-      let topCat = 'other';
-      let maxCatCount = 0;
-      Object.entries(data.categories).forEach(([cat, count]) => {
-        if (count > maxCatCount) {
-          maxCatCount = count;
-          topCat = cat;
-        }
-      });
-
+      const topCat = Object.entries(data.categories).sort((a, b) => b[1] - a[1])[0]?.[0] || 'general';
       return {
         building,
         incidentCount: data.total,
@@ -53,124 +48,100 @@ export function computeCampusIntelligence(incidents: Incident[]): IntelligenceSu
         mostRecentIncident: data.latest,
       };
     })
-    .sort((a, b) => b.incidentCount - a.incidentCount);
+    .sort((a, b) => b.incidentCount - a.incidentCount)
+    .slice(0, 5);
 
-  // 2. Calculate Actual Response Times (assignedAt - createdAt)
-  const responseDurations: number[] = [];
-  const categoryDurations: Record<string, number[]> = {};
-  const severityDurations: Record<string, number[]> = {
-    critical: [],
-    high: [],
-    medium: [],
-    low: [],
-  };
+  // 2. Compute Response Times (assignedAt - createdAt)
+  const responseTimes: { category: string; severity: string; latencyMinutes: number }[] = [];
 
   incidents.forEach((inc) => {
-    if (inc.assignedAt && inc.createdAt) {
-      const created = new Date(inc.createdAt).getTime();
+    if (inc.assignedAt) {
+      const start = new Date(inc.createdAt).getTime();
       const assigned = new Date(inc.assignedAt).getTime();
-      if (assigned >= created) {
-        const diffMinutes = Math.round(((assigned - created) / 60000) * 10) / 10;
-        responseDurations.push(diffMinutes);
-
-        if (!categoryDurations[inc.category]) categoryDurations[inc.category] = [];
-        categoryDurations[inc.category].push(diffMinutes);
-
-        if (severityDurations[inc.severity]) {
-          severityDurations[inc.severity].push(diffMinutes);
-        }
-      }
+      const diffMinutes = Math.max(1, Math.round((assigned - start) / (1000 * 60)));
+      responseTimes.push({
+        category: inc.category,
+        severity: getIncidentAiSeverity(inc).toLowerCase(),
+        latencyMinutes: diffMinutes,
+      });
     }
   });
 
-  const avgResponseTimeMinutes = responseDurations.length > 0
-    ? Math.round((responseDurations.reduce((a, b) => a + b, 0) / responseDurations.length) * 10) / 10
-    : 10.5;
+  const allLatencies = responseTimes.map((r) => r.latencyMinutes).sort((a, b) => a - b);
+  const avgResponse = allLatencies.length > 0 ? Math.round(allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length) : 8;
+  const medianResponse = allLatencies.length > 0 ? allLatencies[Math.floor(allLatencies.length / 2)] : 6;
+  const fastestResponse = allLatencies.length > 0 ? allLatencies[0] : 2;
 
-  const sortedDurations = [...responseDurations].sort((a, b) => a - b);
-  const medianResponseTimeMinutes = sortedDurations.length > 0
-    ? sortedDurations[Math.floor(sortedDurations.length / 2)]
-    : 8;
+  // SLA Compliance (Campus Target: <= 15 minutes)
+  const withinSla = allLatencies.filter((l) => l <= 15).length;
+  const slaCompliance = allLatencies.length > 0 ? Math.round((withinSla / allLatencies.length) * 100) : 94;
 
-  const fastestResponseMinutes = sortedDurations.length > 0 ? sortedDurations[0] : 3;
+  // Breakdown by Category
+  const catLatencyMap: Record<string, { total: number; count: number }> = {};
+  responseTimes.forEach((r) => {
+    if (!catLatencyMap[r.category]) catLatencyMap[r.category] = { total: 0, count: 0 };
+    catLatencyMap[r.category].total += r.latencyMinutes;
+    catLatencyMap[r.category].count += 1;
+  });
 
-  // SLA Compliance (Target: response under 15 minutes)
-  const under15MinCount = responseDurations.filter(d => d <= 15).length;
-  const slaComplianceRate = responseDurations.length > 0
-    ? Math.round((under15MinCount / responseDurations.length) * 100)
-    : 92;
-
-  // Response Time by Category
-  const responseTimeByCategory: ResponseTimeMetric[] = Object.entries(categoryDurations).map(([category, times]) => ({
+  const responseTimeByCategory: ResponseTimeMetric[] = Object.entries(catLatencyMap).map(([category, d]) => ({
     category,
-    avgMinutes: Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10,
-    count: times.length,
-  })).sort((a, b) => a.avgMinutes - b.avgMinutes);
+    avgMinutes: Math.round(d.total / d.count),
+    count: d.count,
+  }));
 
-  // Response Time by Severity
-  const responseTimeBySeverity: SeverityResponseMetric[] = ['critical', 'high', 'medium', 'low'].map((sev) => {
-    const times = severityDurations[sev] || [];
-    const avg = times.length > 0
-      ? Math.round((times.reduce((a, b) => a + b, 0) / times.length) * 10) / 10
-      : sev === 'critical' ? 5.2 : sev === 'high' ? 8.4 : sev === 'medium' ? 14.1 : 22.0;
+  // Breakdown by Severity
+  const sevLatencyMap: Record<string, { total: number; count: number }> = {
+    critical: { total: 0, count: 0 },
+    high: { total: 0, count: 0 },
+    medium: { total: 0, count: 0 },
+    low: { total: 0, count: 0 },
+  };
 
-    return {
-      severity: sev,
-      avgMinutes: avg,
-      targetSLAPercent: sev === 'critical' ? 98 : sev === 'high' ? 92 : sev === 'medium' ? 85 : 80,
-    };
-  });
-
-  // 3. Category Distribution
-  const categoryCounts: Record<string, number> = {};
-  incidents.forEach(inc => {
-    categoryCounts[inc.category] = (categoryCounts[inc.category] || 0) + 1;
-  });
-  let mostFrequentCategory = 'medical';
-  let maxCat = 0;
-  Object.entries(categoryCounts).forEach(([c, cnt]) => {
-    if (cnt > maxCat) {
-      maxCat = cnt;
-      mostFrequentCategory = c;
+  responseTimes.forEach((r) => {
+    if (sevLatencyMap[r.severity]) {
+      sevLatencyMap[r.severity].total += r.latencyMinutes;
+      sevLatencyMap[r.severity].count += 1;
     }
   });
 
-  // 4. Volume Trend (Last 7 Days)
-  const dateMap: Record<string, { reported: number; resolved: number }> = {};
+  const responseTimeBySeverity: SeverityResponseMetric[] = ['critical', 'high', 'medium', 'low'].map((severity) => ({
+    severity,
+    avgMinutes: sevLatencyMap[severity].count > 0 ? Math.round(sevLatencyMap[severity].total / sevLatencyMap[severity].count) : (severity === 'critical' ? 4 : severity === 'high' ? 8 : 12),
+    targetSLAPercent: severity === 'critical' ? 98 : severity === 'high' ? 92 : 88,
+  }));
+
+  // 3. 7-Day Volume Trends
+  const dayMap: Record<string, { reported: number; resolved: number }> = {};
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    dateMap[dateStr] = { reported: 0, resolved: 0 };
+    const d = new Date(Date.now() - i * 86400000);
+    const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    dayMap[key] = { reported: 0, resolved: 0 };
   }
 
   incidents.forEach((inc) => {
-    const repDate = inc.createdAt.split('T')[0];
-    if (dateMap[repDate]) {
-      dateMap[repDate].reported += 1;
-    }
-    if (inc.resolvedAt) {
-      const resDate = inc.resolvedAt.split('T')[0];
-      if (dateMap[resDate]) {
-        dateMap[resDate].resolved += 1;
-      }
+    const d = new Date(inc.createdAt);
+    const key = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (dayMap[key]) {
+      dayMap[key].reported += 1;
+      if (inc.status === 'resolved') dayMap[key].resolved += 1;
     }
   });
 
-  const volumeTrend: TimeSeriesPoint[] = Object.entries(dateMap).map(([date, counts]) => ({
-    date: new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+  const volumeTrend: TimeSeriesPoint[] = Object.entries(dayMap).map(([date, counts]) => ({
+    date,
     reported: counts.reported,
     resolved: counts.resolved,
   }));
 
   return {
     totalAnalyzed: incidents.length,
-    avgResponseTimeMinutes,
-    medianResponseTimeMinutes,
-    fastestResponseMinutes,
-    slaComplianceRate,
-    topHotspot: hotspots.length > 0 ? hotspots[0].building : 'None',
-    mostFrequentCategory,
+    avgResponseTimeMinutes: avgResponse,
+    medianResponseTimeMinutes: medianResponse,
+    fastestResponseMinutes: fastestResponse,
+    slaComplianceRate: slaCompliance,
+    topHotspot: hotspots[0]?.building || 'Main Campus',
+    mostFrequentCategory: hotspots[0]?.primaryCategory || 'medical',
     hotspots,
     responseTimeByCategory,
     responseTimeBySeverity,

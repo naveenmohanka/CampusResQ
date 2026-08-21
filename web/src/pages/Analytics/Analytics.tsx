@@ -1,16 +1,5 @@
 import React from 'react';
-import { useIntelligence } from '../../hooks/useIntelligence';
-import { StatCard } from '../../components/common/StatCard';
-import {
-  Clock,
-  ShieldCheck,
-  Flame,
-  Activity,
-  MapPin,
-  TrendingUp,
-  AlertTriangle,
-  Info
-} from 'lucide-react';
+import { useIncidents } from '../../hooks/useIncidents';
 import {
   ResponsiveContainer,
   BarChart,
@@ -18,237 +7,196 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  AreaChart,
-  Area,
-  CartesianGrid
+  Cell,
+  CartesianGrid,
 } from 'recharts';
-import { formatDate } from '../../utils/dateUtils';
-import { CategoryBadge } from '../../components/common/Badge';
-import { IncidentCategory } from '../../types/incident';
+import { getIncidentAiSeverity } from '../../utils/aiAnalysis';
+import { formatCategory,  } from '../../utils/formatters';
+import { BarChart3, PieChart as PieChartIcon, Activity } from 'lucide-react';
+
+const SEVERITY_COLORS = {
+  CRITICAL: '#ef4444',
+  HIGH: '#f97316',
+  MEDIUM: '#f59e0b',
+  LOW: '#14b8a6',
+};
+
+const STATUS_COLORS = {
+  Pending: '#f43f5e',
+  Accepted: '#3b82f6',
+  'In Progress': '#f59e0b',
+  Resolved: '#10b981',
+};
+
+const CATEGORY_PALETTE = ['#14b8a6', '#38bdf8', '#818cf8', '#a855f7', '#ec4899', '#f59e0b', '#64748b'];
 
 export const AnalyticsPage: React.FC = () => {
-  const { intelligence, loading } = useIntelligence();
+  const { incidents, loading } = useIncidents();
+
+  // Chart 1: Incidents by Category
+  const categoryMap: Record<string, number> = {};
+  incidents.forEach((inc) => {
+    const cat = formatCategory(inc.category);
+    categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+  });
+  const categoryData = Object.entries(categoryMap).map(([category, count]) => ({
+    category,
+    count,
+  }));
+
+  // Chart 2: Incidents by AI Severity
+  const severityMap: Record<string, number> = {
+    CRITICAL: 0,
+    HIGH: 0,
+    MEDIUM: 0,
+    LOW: 0,
+  };
+  incidents.forEach((inc) => {
+    const sev = getIncidentAiSeverity(inc);
+    severityMap[sev] = (severityMap[sev] || 0) + 1;
+  });
+  const severityData = Object.entries(severityMap).map(([severity, count]) => ({
+    severity,
+    count,
+  }));
+
+  // Chart 3: Incidents by Status
+  const statusMap: Record<string, number> = {
+    Pending: 0,
+    Accepted: 0,
+    'In Progress': 0,
+    Resolved: 0,
+  };
+  incidents.forEach((inc) => {
+    const rawStatus = (inc.status || 'pending').toLowerCase();
+    if (rawStatus === 'pending' || rawStatus === 'reported') statusMap['Pending']++;
+    else if (rawStatus === 'accepted') statusMap['Accepted']++;
+    else if (rawStatus === 'in_progress') statusMap['In Progress']++;
+    else if (rawStatus === 'resolved') statusMap['Resolved']++;
+  });
+  const statusData = Object.entries(statusMap).map(([status, count]) => ({
+    status,
+    count,
+  }));
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          Campus Safety Intelligence & Response Analytics
-          <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/10 text-teal-400 font-mono border border-teal-500/30">
-            Module 3
-          </span>
+          Emergency Operations Analytics
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          Historical analysis of repeated campus emergency hotspots, average response times, and resolution performance.
+          High-level operational overview across incident categories, AI triage severity, and status progression.
         </p>
       </div>
 
-      {/* KPI Intelligence Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Average Response Time"
-          value={`${intelligence.avgResponseTimeMinutes} min`}
-          subtitle="Incident report to responder assignment"
-          icon={<Clock className="w-5 h-5" />}
-          accentColor="teal"
-          loading={loading}
-        />
-        <StatCard
-          title="Median Response Time"
-          value={`${intelligence.medianResponseTimeMinutes} min`}
-          subtitle="50th percentile dispatch speed"
-          icon={<Activity className="w-5 h-5" />}
-          accentColor="cyan"
-          loading={loading}
-        />
-        <StatCard
-          title="Target SLA Compliance"
-          value={`${intelligence.slaComplianceRate}%`}
-          subtitle="Within CampusResQ <=15m target SLA"
-          icon={<ShieldCheck className="w-5 h-5" />}
-          accentColor="emerald"
-          loading={loading}
-        />
-        <StatCard
-          title="Primary Incident Hotspot"
-          value={intelligence.topHotspot}
-          subtitle={`${intelligence.hotspots[0]?.incidentCount || 0} total cases recorded`}
-          icon={<Flame className="w-5 h-5" />}
-          accentColor="amber"
-          loading={loading}
-        />
-      </div>
-
-      {/* SLA Calculation Formula Box */}
-      <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex items-start gap-3 text-xs text-slate-300">
-        <Info className="w-4 h-4 text-teal-400 flex-shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="font-semibold text-white">Response Time & Target SLA Formula:</p>
-          <p className="text-slate-400 font-mono text-[11px]">
-            Response Time = Timestamp(assignedAt) - Timestamp(createdAt) | CampusResQ Configurable Target SLA &le; 15 minutes
-          </p>
-          <p className="text-slate-500 text-[11px]">
-            Metrics are computed directly from stored Firestore document lifecycle timestamps.
-          </p>
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      </div>
-
-      {/* Section 1: Repeated Incident Hotspots */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-              <MapPin className="w-4 h-4" />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Chart 1: Incidents by Category */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/30">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Incidents by Category</h3>
+                <p className="text-[11px] text-slate-400">Distribution across emergency types</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-white text-base">Repeated Incident Hotspots</h3>
-              <p className="text-xs text-slate-400">Campus buildings and zones ranked by emergency recurrence</p>
-            </div>
-          </div>
-        </div>
 
-        {intelligence.hotspots.length === 0 ? (
-          <div className="py-8 text-center text-xs text-slate-500">
-            Not enough historical data to identify repeated patterns.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3 px-4">Campus Building / Location</th>
-                  <th className="py-3 px-4 text-center">Total Incidents</th>
-                  <th className="py-3 px-4 text-center">Critical Emergencies</th>
-                  <th className="py-3 px-4">Primary Category</th>
-                  <th className="py-3 px-4 text-right">Latest Incident</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs">
-                {intelligence.hotspots.map((spot, idx) => (
-                  <tr key={spot.building} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 px-4 font-semibold text-white flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-md bg-slate-800 text-teal-400 font-mono text-[10px] flex items-center justify-center font-bold">
-                        #{idx + 1}
-                      </span>
-                      {spot.building}
-                    </td>
-                    <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-200">
-                      {spot.incidentCount}
-                    </td>
-                    <td className="py-3.5 px-4 text-center font-mono font-bold">
-                      {spot.criticalCount > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-red-950 text-red-400 border border-red-800/60">
-                          {spot.criticalCount} Critical
-                        </span>
-                      ) : (
-                        <span className="text-slate-500">0</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <CategoryBadge category={spot.primaryCategory as IncidentCategory} />
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-400">
-                      {formatDate(spot.mostRecentIncident)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Section 2: Response Time by Category & Severity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Category Response Times */}
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-teal-400" />
-            <div>
-              <h3 className="font-bold text-white text-base">Average Response Time by Category</h3>
-              <p className="text-xs text-slate-400">Average response time (in minutes) across emergency types</p>
+            <div className="h-64 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis type="number" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis dataKey="category" type="category" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} width={90} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="count" fill="#14b8a6" radius={[0, 6, 6, 0]}>
+                    {categoryData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={CATEGORY_PALETTE[index % CATEGORY_PALETTE.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="h-64 mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={intelligence.responseTimeByCategory} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis type="number" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} unit="m" />
-                <YAxis dataKey="category" type="category" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} width={80} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                  formatter={(val: any) => [`${val} min`, 'Average Response Time']}
-                />
-                <Bar dataKey="avgMinutes" fill="#14b8a6" radius={[0, 6, 6, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+          {/* Chart 2: Incidents by AI Severity */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                <PieChartIcon className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Incidents by AI Severity</h3>
+                <p className="text-[11px] text-slate-400">AI Priority & Threat Assessment</p>
+              </div>
+            </div>
 
-        {/* Severity Response Times */}
-        <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-400" />
-            <div>
-              <h3 className="font-bold text-white text-base">Response Time by Threat Severity</h3>
-              <p className="text-xs text-slate-400">Comparing response speeds across severity levels</p>
+            <div className="h-64 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={severityData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="severity" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {severityData.map((entry) => (
+                      <Cell
+                        key={`cell-${entry.severity}`}
+                        fill={SEVERITY_COLORS[entry.severity as keyof typeof SEVERITY_COLORS] || '#14b8a6'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="h-64 mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={intelligence.responseTimeBySeverity}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="severity" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-                <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} unit="m" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-                  formatter={(val: any) => [`${val} min`, 'Average Response Time']}
-                />
-                <Bar dataKey="avgMinutes" fill="#38bdf8" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Chart 3: Incidents by Status */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <Activity className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-sm">Incidents by Status</h3>
+                <p className="text-[11px] text-slate-400">Operational workflow progression</p>
+              </div>
+            </div>
+
+            <div className="h-64 mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="status" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {statusData.map((entry) => (
+                      <Cell
+                        key={`cell-${entry.status}`}
+                        fill={STATUS_COLORS[entry.status as keyof typeof STATUS_COLORS] || '#14b8a6'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Section 3: 7-Day Volume Trend */}
-      <div className="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
-        <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-teal-400" />
-          <div>
-            <h3 className="font-bold text-white text-base">Campus Incident & Resolution Volume Trend</h3>
-            <p className="text-xs text-slate-400">Daily reported emergencies versus successfully resolved cases</p>
-          </div>
-        </div>
-
-        <div className="h-64 mt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={intelligence.volumeTrend}>
-              <defs>
-                <linearGradient id="colorReported" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorResolved" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="date" stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <YAxis stroke="#64748b" tick={{ fill: '#94a3b8', fontSize: 11 }} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', fontSize: '12px' }}
-              />
-              <Area type="monotone" dataKey="reported" stroke="#ef4444" fillOpacity={1} fill="url(#colorReported)" name="Reported Incidents" />
-              <Area type="monotone" dataKey="resolved" stroke="#10b981" fillOpacity={1} fill="url(#colorResolved)" name="Resolved Cases" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

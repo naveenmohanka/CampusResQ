@@ -1,3 +1,5 @@
+import { AiAnalysis } from '../utils/aiAnalysis';
+
 export type IncidentCategory = 
   | 'medical' 
   | 'fire' 
@@ -5,28 +7,19 @@ export type IncidentCategory =
   | 'facility' 
   | 'ragging' 
   | 'harassment' 
-  | 'other';
+  | 'other'
+  | string;
 
-export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
-export type IncidentStatus = 'reported' | 'assigned' | 'in_progress' | 'resolved';
+export type IncidentStatus = 'pending' | 'reported' | 'accepted' | 'in_progress' | 'resolved';
 
 export interface IncidentLocation {
-  latitude: number;
-  longitude: number;
-  address: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
   building?: string;
   floor?: string;
-}
-
-export interface EvidenceItem {
-  id: string;
-  url: string;
-  name: string;
-  size?: number;
-  mimeType?: string;
-  uploadedAt: string;
-  uploadedBy?: string;
 }
 
 export interface Incident {
@@ -34,18 +27,22 @@ export interface Incident {
   title: string;
   description: string;
   category: IncidentCategory;
-  severity: IncidentSeverity;
+  severity?: IncidentSeverity;
   status: IncidentStatus;
-  location: IncidentLocation;
+  location: any; // string or IncidentLocation
   
   // Reporter details & Privacy
   reporterId: string;
-  reporterName: string;
+  reporterName?: string;
   reporterEmail?: string;
   reporterPhone?: string;
   isAnonymous?: boolean;
   
-  // Assigned Responder
+  // AI Analysis (Android Source of Truth)
+  aiAnalysisStatus?: 'pending' | 'completed' | 'failed' | string;
+  aiAnalysis?: string | AiAnalysis;
+  
+  // Response Team / Responder
   assignedTo?: string | null;
   assignedToName?: string | null;
   assignedToEmail?: string | null;
@@ -53,15 +50,13 @@ export interface Incident {
   
   // Evidence & Media
   images?: string[];
-  evidence?: EvidenceItem[];
   
   // Resolution details
   resolutionNotes?: string;
   
-  // Lifecycle Timestamps for Intelligence & SLA tracking
+  // Lifecycle Timestamps
   createdAt: string;
   assignedAt?: string;
-  acknowledgedAt?: string;
   inProgressAt?: string;
   resolvedAt?: string;
   updatedAt?: string;
@@ -69,17 +64,16 @@ export interface Incident {
 
 export interface IncidentFilters {
   status?: IncidentStatus | 'all';
-  severity?: IncidentSeverity | 'all';
-  category?: IncidentCategory | 'all';
-  assignedTo?: string | 'all';
+  aiSeverity?: 'all' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  category?: string | 'all';
   searchQuery?: string;
-  isAnonymous?: boolean;
+  sortBy?: 'newest' | 'priority';
 }
 
 export interface IncidentStats {
   total: number;
+  pending: number;
   active: number;
-  critical: number;
   resolved: number;
-  avgResponseTimeMinutes?: number;
+  criticalHigh: number;
 }
