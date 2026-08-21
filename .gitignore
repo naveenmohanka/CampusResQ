@@ -45,3 +45,8 @@ Thumbs.db
 .gradle/
 .vite/
 .vite
+
+# Separate standalone module repositories
+CampusResQ-AI-Intelligence/
+CampusResQ-Emergency-Reporting/
+CampusResQ-Live-Response/
