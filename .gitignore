@@ -42,3 +42,6 @@ captures/
 .externalNativeBuild/
 .cxx/
 local.properties
+
+.vite/
+.vite
