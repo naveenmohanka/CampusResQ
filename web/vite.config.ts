@@ -10,6 +10,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'recharts', 'clsx', 'tailwind-merge'],
+  },
   server: {
     port: 5173,
     host: true,
