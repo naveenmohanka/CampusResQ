@@ -58,8 +58,6 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=450575997759
 VITE_FIREBASE_APP_ID=your_web_app_id_here
 ```
 
-> **Note**: If `.env` is omitted or contains placeholder values, the dashboard automatically enters **Interactive Demo / Simulation Mode**, providing pre-seeded campus emergency data and mock real-time event updates without throwing errors.
-
 ---
 
 ## Running the Dashboard
@@ -76,11 +74,6 @@ npm run build
 ```
 Creates an optimized production bundle inside `web/dist/`.
 
-### Preview Production Build
-```bash
-npm run preview
-```
-
 ### TypeScript Validation
 ```bash
 npm run lint
@@ -88,8 +81,40 @@ npm run lint
 
 ---
 
-## Default Admin Credentials (Demo Mode)
+## Admin Authentication & Role-Based Access Control (RBAC)
 
-- **Email**: `admin@campusresq.edu`
-- **Password**: `password123`
-- Or click **"One-Click Admin Demo Login"** on the login screen.
+Access to the Admin Web Dashboard is strictly guarded by Firebase Authentication and Firestore Security Rules:
+
+```text
+User enters Email & Password on /login
+              │
+              ▼
+   Firebase Authentication
+ (signInWithEmailAndPassword)
+              │
+              ▼
+    Query Firestore Doc
+      (users/{uid})
+              │
+              ▼
+       Is role == 'admin'?
+      /                 \
+    YES                  NO
+    /                     \
+Access Granted       Access Denied
+Dashboard Loads    Session Terminated
+```
+
+### Setting Up an Admin User in Firebase:
+1. In the **Firebase Console**, create a user in **Authentication** $\rightarrow$ **Users** (or let them sign up).
+2. In **Cloud Firestore**, create a document in the `users` collection with the document ID matching the user's `UID`:
+   ```json
+   {
+     "name": "Dr. Rajesh Mohanty",
+     "email": "admin@campusresq.edu",
+     "role": "admin",
+     "department": "Campus Safety & Emergency Operations",
+     "createdAt": "timestamp"
+   }
+   ```
+3. The user can now log into the Admin Command Center using their email and password.

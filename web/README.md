@@ -13,7 +13,7 @@ Real-time Incident Response & Campus Emergency Operations Command Center built w
 - **User & Role Management**: Directory of registered students, mentors, and administrators with role modification controls.
 - **Immutable Audit Trail**: Chronological activity log of all incident creations, status modifications, assignments, and escalations.
 - **Decoupled Architecture**: Fully decoupled from the Android client while sharing the exact same Cloud Firestore project.
-- **Offline / Demo Mode**: Built-in interactive demo mode for previewing features when live Firebase credentials are not yet configured.
+- **Role-Based Security**: Strict access control verifying `role === 'admin'` from Firestore `users/{uid}`.
 
 ---
 
@@ -28,4 +28,23 @@ npm run dev
 
 # 3. Build for production
 npm run build
+```
+
+---
+
+## Authentication Flow
+
+```text
+Login Form (Email + Password)
+          │
+          ▼
+Firebase Auth (signInWithEmailAndPassword)
+          │
+          ▼
+Firestore Lookup (users/{uid})
+          │
+          ▼
+Check: role === 'admin'
+ ├── True  --> Grant Access to Dashboard
+ └── False --> Deny Access & Terminate Session
 ```
