@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Lock, Mail, AlertTriangle, Radio, Sparkles } from 'lucide-react';
+import { Lock, Mail, AlertTriangle, Radio, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/common/Button';
 import { useNotification } from '../../context/NotificationContext';
@@ -11,8 +11,8 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('admin@campusresq.edu');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [localErr, setLocalErr] = useState<string | null>(null);
 
@@ -23,39 +23,22 @@ export const Login: React.FC = () => {
     setLocalErr(null);
     clearError();
 
+    if (!email.trim() || !password) {
+      setLocalErr('Please enter both email and password.');
+      return;
+    }
+
     try {
       setLoading(true);
-      await login(email, password);
+      await login(email.trim(), password);
       showToast({
         type: 'success',
         title: 'Authentication Verified',
-        message: 'Welcome back to CampusResQ Emergency Operations Center.',
+        message: 'Welcome to CampusResQ Emergency Operations Center.',
       });
       navigate(from, { replace: true });
     } catch (err: any) {
       setLocalErr(err.message || 'Login failed. Please verify admin credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickDemo = async () => {
-    setEmail('admin@campusresq.edu');
-    setPassword('password123');
-    setLocalErr(null);
-    clearError();
-
-    try {
-      setLoading(true);
-      await login('admin@campusresq.edu', 'password123');
-      showToast({
-        type: 'success',
-        title: 'Admin Session Initialized',
-        message: 'Loaded CampusResQ Command Center.',
-      });
-      navigate('/dashboard', { replace: true });
-    } catch (err: any) {
-      setLocalErr(err.message);
     } finally {
       setLoading(false);
     }
@@ -82,14 +65,15 @@ export const Login: React.FC = () => {
           Authorized Emergency Response & Campus Safety Portal
         </p>
 
-        {/* Firebase / Environment Banner */}
+        {/* Security / System Banner */}
         <div className="mt-4 mx-4 sm:mx-0 p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
           <span className="text-slate-400 flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${isFirebaseConfigured ? 'bg-emerald-400' : 'bg-teal-400'}`} />
-            Mode:
+            System Status:
           </span>
-          <span className="font-mono text-slate-300 font-semibold">
-            {isFirebaseConfigured ? 'Production Firestore' : 'Offline / Demo Simulation'}
+          <span className="font-mono text-slate-300 font-semibold flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
+            {isFirebaseConfigured ? 'Production Firestore' : 'Security Mode Active'}
           </span>
         </div>
       </div>
@@ -152,20 +136,9 @@ export const Login: React.FC = () => {
             </Button>
           </form>
 
-          {/* Quick Demo Test Access */}
-          <div className="pt-4 border-t border-slate-800/80 text-center space-y-3">
-            <p className="text-xs text-slate-400">Quick Testing Credentials:</p>
-            <button
-              type="button"
-              onClick={handleQuickDemo}
-              disabled={loading}
-              className="w-full py-2 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-teal-300 text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:border-teal-500/40"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-              One-Click Admin Demo Login
-            </button>
+          <div className="pt-2 text-center">
             <p className="text-[11px] text-slate-500">
-              Role validation enforced: non-admin roles will be automatically denied.
+              Role validation enforced: Only verified administrator accounts can access the emergency console.
             </p>
           </div>
         </div>
