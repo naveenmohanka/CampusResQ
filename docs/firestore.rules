@@ -27,6 +27,15 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().role == 'student';
     }
 
+    // Helper: Immutable Threat Level Enforcement
+    // Once an incident reaches status == 'resolved', its severity (threat level) CANNOT be modified
+    // even by Admins or Mentors. Status and Severity must also not be changed simultaneously to bypass this.
+    function isThreatLevelImmutableOnResolved() {
+      return !('status' in resource.data) || 
+             resource.data.status != 'resolved' || 
+             request.resource.data.severity == resource.data.severity;
+    }
+
     // ===============================================================
     // 1. Users Collection Security Rules
     // PREVENTS PRIVILEGE ESCALATION (student -> admin, mentor -> admin)
@@ -68,10 +77,11 @@ service cloud.firestore {
                     request.resource.data.reporterId == request.auth.uid;
       
       // Modification Rules:
-      // - Admins: Can update any incident (assign mentor, change severity, resolve)
+      // - IMMUTABILITY: If status == 'resolved', severity cannot be changed (isThreatLevelImmutableOnResolved())
+      // - Admins: Can update incident fields (assign mentor, change severity if not resolved, resolve)
       // - Mentors: Can ONLY update incidents assigned to them
       // - Students: Can only edit description on their own unresolved reports (cannot reassign or resolve)
-      allow update: if isAuthenticated() && (
+      allow update: if isAuthenticated() && isThreatLevelImmutableOnResolved() && (
         isAdmin() || 
         (isMentor() && resource.data.assignedTo == request.auth.uid) ||
         (isStudent() && resource.data.reporterId == request.auth.uid && resource.data.status == 'reported' && request.resource.data.assignedTo == resource.data.assignedTo && request.resource.data.status == resource.data.status)

@@ -1,4 +1,4 @@
-﻿import {
+import {
   collection,
   doc,
   getDoc,
@@ -257,13 +257,28 @@ export async function updateIncidentSeverity(
 ): Promise<void> {
   const nowISO = new Date().toISOString();
 
+  // Business Rule: The Threat Level cannot be modified once the incident is RESOLVED
   if (isFirebaseConfigured && db) {
     const docRef = doc(db, 'incidents', incidentId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.status === 'resolved') {
+        throw new Error('Threat level cannot be changed after an incident is resolved.');
+      }
+      if (data.severity === newSeverity) {
+        return; // No-op if identical
+      }
+    }
     await updateDoc(docRef, {
       severity: newSeverity,
       updatedAt: serverTimestamp(),
     });
   } else {
+    const existing = localIncidents.find((inc) => inc.id === incidentId);
+    if (existing && existing.status === 'resolved') {
+      throw new Error('Threat level cannot be changed after an incident is resolved.');
+    }
     localIncidents = localIncidents.map((inc) => {
       if (inc.id === incidentId) {
         return {

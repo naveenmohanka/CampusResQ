@@ -1,69 +1,74 @@
-# Shared Data & API Contract Specification
+# Shared Firebase & Android/Web API Contract
 
-Even though CampusResQ utilizes Firebase Cloud Firestore as a serverless real-time database rather than a traditional REST API, this document specifies the shared data contract between the **Android Application** (Student & Mentor App) and the **Admin Web Dashboard**.
-
----
-
-## 1. Authentication & Security Roles
-
-Firebase Authentication (`firebase/auth`) manages user identities. Each user document is stored in Firestore under `/users/{uid}`.
-
-### Role Permissions Matrix
-
-| Capability | Student (Android) | Mentor (Android) | Admin (Web Dashboard) |
-| :--- | :---: | :---: | :---: |
-| Access Admin Web Portal | ❌ Denied | ❌ Denied | ✅ Allowed |
-| Report Emergency / Incident | ✅ Allowed | ✅ Allowed | ✅ Allowed |
-| View Personal Reports | ✅ Allowed | ✅ Allowed | ✅ Allowed |
-| View Assigned Incidents | ❌ | ✅ Allowed | ✅ Allowed |
-| View All Campus Incidents | ❌ | ❌ | ✅ Allowed |
-| Reassign Incident Mentors | ❌ | ❌ | ✅ Allowed |
-| Update Status (In Progress/Resolved) | ❌ | ✅ (Assigned) | ✅ Allowed |
-| Modify User Roles | ❌ | ❌ | ✅ Allowed |
-| View System Audit Logs | ❌ | ❌ | ✅ Allowed |
+This document defines the shared contract between the **CampusResQ Android Mobile App** and the **CampusResQ Admin Web Dashboard**.
 
 ---
 
-## 2. Shared Data Entities
+## 1. Incident Lifecycle & Threat Level Immutability Contract
 
-### Enums & Constant Values
+### Field Definitions:
+- `severity` (Threat Level): `'critical'`, `'high'`, `'medium'`, `'low'`
+- `status` (Operational Lifecycle): `'reported'`, `'assigned'`, `'in_progress'`, `'resolved'`
 
-#### Incident Status (`IncidentStatus`)
-- `'reported'`: Initial state when submitted by student
-- `'assigned'`: Faculty mentor or security unit designated
-- `'in_progress'`: Responder actively on-scene
-- `'resolved'`: Emergency handled, report filed, closed
-
-#### Incident Severity (`IncidentSeverity`)
-- `'low'`: Minor non-urgent issue (e.g. broken classroom bench)
-- `'medium'`: Requires timely attention (e.g. minor sports sprain, gate barrier issue)
-- `'high'`: Urgent threat (e.g. chemical fume leak, hostel dispute)
-- `'critical'`: Immediate life-safety emergency (e.g. cardiac arrest, structural fire)
-
-#### Incident Category (`IncidentCategory`)
-- `'medical'`
-- `'fire'`
-- `'security'`
-- `'facility'`
-- `'ragging'`
-- `'harassment'`
-- `'other'`
+### Business Rule: **Immutable Threat Level After Resolution**
+1. **Reporting & Active Investigation**:
+   - The student reporter selects the initial `severity` during incident creation.
+   - Authorized responders / administrators may adjust `severity` (threat level) during active investigation (`reported`, `assigned`, `in_progress`).
+2. **Resolution Transition**:
+   - When an incident reaches `status: 'resolved'`, the `severity` field becomes **PERMANENTLY LOCKED & IMMUTABLE**.
+   - Neither Web administrators nor Android clients can change `severity` once `status == 'resolved'`.
+   - `status: 'resolved'` does NOT change or downgrade `severity` (e.g., a resolved Critical incident retains `severity: 'critical'`).
+3. **Enforcement**:
+   - **Firestore Security Rules**: Reject any `update` operation where `resource.data.status == 'resolved'` and `request.resource.data.severity != resource.data.severity`.
+   - **Service Layer**: Throws `"Threat level cannot be changed after an incident is resolved."`
+   - **UI Layer**: Replaces interactive severity selector with locked indicator (`[ CRITICAL 🔒 ]`).
+   - **Android Client**: Must disable severity modifications on resolved incident views and treat `severity` as read-only once `status == 'resolved'`.
 
 ---
 
-## 3. Real-Time Event Dispatch Protocol
+## 2. Shared Firestore Document Contracts
 
-1. **Student Reports Incident (Android App)**:
-   - Creates a document in Firestore `incidents/{id}` with `status: 'reported'`.
-   - Admin Web Dashboard `onSnapshot` listener receives instant notification without browser refresh.
-   - Alert audio/toast triggers on command center monitors.
+### `incidents/{incidentId}`
+```json
+{
+  "id": "inc-2026-001",
+  "title": "Severe Asthma Attack",
+  "description": "Student collapsed outside Central Library...",
+  "category": "medical",
+  "severity": "critical",
+  "status": "resolved",
+  "location": {
+    "latitude": 20.3533,
+    "longitude": 85.8189,
+    "address": "Central Library, 2nd Floor",
+    "building": "Central Library"
+  },
+  "reporterId": "student-201",
+  "reporterName": "Priya Sharma",
+  "isAnonymous": false,
+  "assignedTo": "mentor-103",
+  "assignedToName": "Capt. Suresh Panda",
+  "resolutionNotes": "Administered inhaler and oxygen at health center.",
+  "createdAt": "2026-08-21T10:00:00Z",
+  "assignedAt": "2026-08-21T10:05:00Z",
+  "resolvedAt": "2026-08-21T10:45:00Z",
+  "updatedAt": "2026-08-21T10:45:00Z"
+}
+```
 
-2. **Admin Assigns Mentor (Web Dashboard)**:
-   - Updates `incidents/{id}` setting `assignedTo: mentorId`, `assignedToName: mentorName`, and `status: 'assigned'`.
-   - Automatically writes entry to `activityLogs` with action `'INCIDENT_ASSIGNED'`.
-   - Android mentor client receives real-time assignment push update.
-
-3. **Mentor / Admin Updates Status or Resolves**:
-   - Updates `status` to `'in_progress'` or `'resolved'`.
-   - Records resolution summary in `resolutionNotes` and `resolvedAt`.
-   - Audit trail updated in `activityLogs`.
+### `alerts/{alertId}`
+```json
+{
+  "id": "alert-2026-001",
+  "title": "FLASH FLOOD ADVISORY",
+  "message": "Subway between Campus 3 and 11 is flooded.",
+  "severity": "warning",
+  "category": "weather",
+  "targetArea": "Subway Connector",
+  "active": true,
+  "createdBy": "admin-001",
+  "createdByName": "Dr. Rajesh Mohanty",
+  "createdAt": "2026-08-21T10:00:00Z",
+  "expiresAt": "2026-08-21T14:00:00Z"
+}
+```

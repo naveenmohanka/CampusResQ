@@ -63,6 +63,14 @@ export const IncidentDetail: React.FC = () => {
 
   const handleSeverityChange = async (newSev: IncidentSeverity) => {
     if (!incident || !user) return;
+    if (incident.status === 'resolved') {
+      showToast({
+        type: 'error',
+        title: 'Action Prohibited',
+        message: 'Threat level cannot be changed after an incident is resolved.',
+      });
+      return;
+    }
     try {
       await updateIncidentSeverity(incident.id, newSev, user.id, user.name);
       setIncident({ ...incident, severity: newSev });
@@ -83,6 +91,8 @@ export const IncidentDetail: React.FC = () => {
   if (!incident) {
     return <div className="py-12 text-center text-xs text-slate-400">Incident record not found.</div>;
   }
+
+  const isResolved = incident.status === 'resolved';
 
   // Calculate actual response time if assigned
   let responseMinutes: number | null = null;
@@ -109,14 +119,16 @@ export const IncidentDetail: React.FC = () => {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setIsAssignModalOpen(true)}
-            icon={<UserCheck className="w-3.5 h-3.5" />}
-          >
-            {incident.assignedTo ? 'Reassign Responder' : 'Assign Responder'}
-          </Button>
+          {!isResolved && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsAssignModalOpen(true)}
+              icon={<UserCheck className="w-3.5 h-3.5" />}
+            >
+              {incident.assignedTo ? 'Reassign Responder' : 'Assign Responder'}
+            </Button>
+          )}
 
           <Button
             variant="primary"
@@ -124,7 +136,7 @@ export const IncidentDetail: React.FC = () => {
             onClick={() => setIsStatusModalOpen(true)}
             icon={<CheckCircle2 className="w-3.5 h-3.5" />}
           >
-            Update Operational Status
+            {isResolved ? 'Edit Resolution Record' : 'Update Operational Status'}
           </Button>
         </div>
       </div>
@@ -152,26 +164,47 @@ export const IncidentDetail: React.FC = () => {
             </h1>
           </div>
 
-          {/* Threat Level Switcher */}
+          {/* Threat Level Switcher / Locked Indicator */}
           <div className="flex items-center gap-3 p-3 bg-slate-900/90 rounded-xl border border-slate-800">
             <div className="text-right">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                Threat Level
-              </p>
-              <div className="mt-0.5">
+              <div className="flex items-center justify-end gap-1">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Threat Level
+                </p>
+                {isResolved && (
+                  <span title="Locked after resolution">
+                    <Lock className="w-3 h-3 text-slate-500" />
+                  </span>
+                )}
+              </div>
+              <div className="mt-0.5 flex items-center gap-1.5 justify-end">
                 <SeverityBadge severity={incident.severity} />
               </div>
             </div>
-            <select
-              value={incident.severity}
-              onChange={(e) => handleSeverityChange(e.target.value as IncidentSeverity)}
-              className="px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-teal-500"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
+
+            {isResolved ? (
+              <div
+                className="px-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs font-semibold text-slate-400 flex items-center gap-1.5 select-none"
+                title="Threat level cannot be changed after an incident is resolved"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[10px] text-amber-300 font-mono font-bold uppercase tracking-wider">
+                  Locked
+                </span>
+              </div>
+            ) : (
+              <select
+                value={incident.severity}
+                onChange={(e) => handleSeverityChange(e.target.value as IncidentSeverity)}
+                className="px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:border-teal-500 cursor-pointer"
+                title="Select Threat Level"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            )}
           </div>
         </div>
 
@@ -186,7 +219,7 @@ export const IncidentDetail: React.FC = () => {
         </div>
 
         {/* Resolution Summary Box if Resolved */}
-        {incident.status === 'resolved' && incident.resolutionNotes && (
+        {isResolved && incident.resolutionNotes && (
           <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-200">
             <h4 className="font-bold text-emerald-300 flex items-center gap-1.5 mb-1">
               <CheckCircle2 className="w-4 h-4" />
