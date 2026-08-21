@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-page: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-subtle: #f8fafc;
+    --bg-hover: #f1f5f9;
+    --border-color: #e5e7eb;
+    --border-subtle: #f3f4f6;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+
+    --nav-active-bg: #7c3aed;
+    --nav-active-text: #ffffff;
+    --nav-active-icon: #ffffff;
+    --nav-inactive-text: #475569;
+    --nav-hover-bg: #f8fafc;
+    --nav-hover-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  .dark {
+    --bg-page: #000000;
+    --bg-surface: #0a0a0c;
+    --bg-subtle: #121215;
+    --bg-hover: #18181c;
+    --border-color: #262626;
+    --border-subtle: #1f1f23;
+
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --nav-active-bg: #c4b5fd;
+    --nav-active-text: #0f172a;
+    --nav-active-icon: #6d28d9;
+    --nav-inactive-text: #94a3b8;
+    --nav-hover-bg: #141418;
+    --nav-hover-shadow: none;
+  }
+
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-page);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Clean operational cards (replaces old gradient glass panels) */
+.glass-panel,
+.clean-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.clean-card-subtle {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+}
+
+/* Navigation Hover Micro-Interaction */
+.nav-link-hover {
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.nav-link-hover:hover {
+  transform: scale(1.02);
+}
+
+/* Theme Toggle Button Transition */
+.theme-toggle-btn {
+  transition: all 180ms ease;
+}

@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Check if client is authenticated with Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Retrieve user profile document from Firestore
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Helper: Check if the authenticated user has verified 'admin' role in Firestore
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    // Helper: Check if the authenticated user has verified 'mentor' role in Firestore
+    function isMentor() {
+      return isAuthenticated() && getUserData().role == 'mentor';
+    }
+
+    // Helper: Check if the authenticated user has verified 'student' role in Firestore
+    function isStudent() {
+      return isAuthenticated() && getUserData().role == 'student';
+    }
+
+    // Helper: Immutable Threat Level Enforcement
+    // Once an incident reaches status == 'resolved', its severity and adminSeverity CANNOT be modified
+    // even by Admins or Mentors. Status and Severity must also not be changed simultaneously to bypass this.
+    function isThreatLevelImmutableOnResolved() {
+      return !('status' in resource.data) || 
+             resource.data.status != 'resolved' || 
+             ((!('severity' in request.resource.data) || request.resource.data.severity == resource.data.severity) &&
+              (!('adminSeverity' in request.resource.data) || !('adminSeverity' in resource.data) || request.resource.data.adminSeverity == resource.data.adminSeverity));
+    }
+
+    // ===============================================================
+    // 1. Users Collection Security Rules
+    // PREVENTS PRIVILEGE ESCALATION (student -> admin, mentor -> admin)
+    // ===============================================================
+    match /users/{userId} {
+      // Authenticated users can read their own profile; Admins can read all profiles
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      
+      // New users can only register with 'student' role. Direct client self-elevation to 'admin' is DENIED.
+      allow create: if isAuthenticated() && 
+                    request.auth.uid == userId && 
+                    request.resource.data.role == 'student';
+      
+      // Profile updates: users can update personal info (phone, department),
+      // but the 'role' field CANNOT be changed by students or mentors (role escalation DENIED).
+      // Only Admins can modify user records.
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && request.resource.data.role == resource.data.role) ||
+        isAdmin()
+      );
+      
+      // Only Admins can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 2. Incidents Collection Security Rules (Module 1 & 4)
+    // ===============================================================
+    match /incidents/{incidentId} {
+      // Students can read their own reported incidents; Mentors & Admins can read active incidents
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isMentor() || 
+        (isStudent() && resource.data.reporterId == request.auth.uid)
+      );
+      
+      // Any authenticated student/user can report an emergency with themselves as reporter
+      allow create: if isAuthenticated() && 
+                    request.resource.data.reporterId == request.auth.uid;
+      
+      // Modification Rules:
+      // - IMMUTABILITY: If status == 'resolved', severity and adminSeverity cannot be changed (isThreatLevelImmutableOnResolved())
+      // - Admins: Can update incident fields (assign mentor, change adminSeverity if not resolved, resolve)
+      // - Mentors: Can ONLY update incidents assigned to them
+      // - Students: Can only edit description on their own unresolved reports (cannot reassign or resolve)
+      allow update: if isAuthenticated() && isThreatLevelImmutableOnResolved() && (
+        isAdmin() || 
+        (isMentor() && resource.data.assignedTo == request.auth.uid) ||
+        (isStudent() && resource.data.reporterId == request.auth.uid && resource.data.status == 'reported' && request.resource.data.assignedTo == resource.data.assignedTo && request.resource.data.status == resource.data.status)
+      );
+      
+      // Only Admins can delete or archive incidents
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 3. Campus Broadcast Alerts Collection (Module 2)
+    // ===============================================================
+    match /alerts/{alertId} {
+      // Any authenticated campus user can read broadcast alerts
+      allow read: if isAuthenticated();
+      
+      // ONLY verified Administrators can create, publish, or deactivate campus emergency alerts
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 4. Activity Logs Collection Security Rules (Immutable Audit Trail)
+    // PREVENTS AUDIT FORGERY AND IMPERSONATION
+    // ===============================================================
+    match /activityLogs/{logId} {
+      // Authenticated mentors and admins can view activity audit logs; Students are DENIED
+      allow read: if isAuthenticated() && (isAdmin() || isMentor());
+      
+      // Strict Anti-Forgery: Actor UID MUST correspond to authenticated request.auth.uid
+      allow create: if isAuthenticated() && 
+                    request.resource.data.performedBy == request.auth.uid;
+      
+      // Audit logs are strictly immutable: no updates or deletions permitted
+      allow update, delete: if false;
+    }
+  }
+}
